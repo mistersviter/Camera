@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 type CaptureSettings = {
   width: number
@@ -18,6 +18,10 @@ type TorchCapabilities = MediaTrackCapabilities & {
 
 type TorchConstraintSet = MediaTrackConstraintSet & {
   torch?: boolean
+}
+
+type NativeImageCapture = {
+  takePhoto: () => Promise<Blob>
 }
 
 type CameraCaptureProps = {
@@ -43,25 +47,19 @@ export function CameraCapture({
   const [isCapturing, setIsCapturing] = useState(false)
   const [torchSupported, setTorchSupported] = useState(false)
   const [torchEnabled, setTorchEnabled] = useState(false)
+  const [sourceResolution, setSourceResolution] = useState('')
+  const [captureMethod, setCaptureMethod] = useState<'imageCapture' | 'video'>(
+    'video',
+  )
 
-  useEffect(() => {
-    void startCamera()
-
-    return () => {
-      stopCamera()
-    }
-  }, [])
-
-  async function startCamera() {
+  const startCamera = useCallback(async () => {
     setStatus('starting')
     setError('')
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: {
-          facingMode: { ideal: 'environment' },
-        },
+        video: buildVideoConstraints(settings),
       })
 
       streamRef.current = stream
@@ -74,9 +72,17 @@ export function CameraCapture({
 
       const [track] = stream.getVideoTracks()
       const capabilities = track?.getCapabilities?.() as TorchCapabilities | undefined
+      const trackSettings = track?.getSettings?.()
 
       setTorchSupported(Boolean(capabilities?.torch))
       setTorchEnabled(false)
+      setCaptureMethod(getImageCaptureInstance(track) ? 'imageCapture' : 'video')
+      setSourceResolution(
+        formatResolution(
+          trackSettings?.width ?? video?.videoWidth,
+          trackSettings?.height ?? video?.videoHeight,
+        ),
+      )
       setStatus('ready')
     } catch (cameraError) {
       const name =
@@ -91,11 +97,17 @@ export function CameraCapture({
       }
 
       setStatus('error')
-      setError(
-        'Не удалось открыть камеру. Попробуйте еще раз чуть позже.',
-      )
+      setError('Не удалось открыть камеру. Попробуйте еще раз чуть позже.')
     }
-  }
+  }, [settings])
+
+  useEffect(() => {
+    void startCamera()
+
+    return () => {
+      stopCamera()
+    }
+  }, [startCamera])
 
   function stopCamera() {
     const stream = streamRef.current
@@ -110,6 +122,8 @@ export function CameraCapture({
     streamRef.current = null
     setTorchSupported(false)
     setTorchEnabled(false)
+    setSourceResolution('')
+    setCaptureMethod('video')
   }
 
   async function handleTorchToggle() {
@@ -135,7 +149,9 @@ export function CameraCapture({
 
   async function handleCapture() {
     const video = videoRef.current
-    if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+    const track = streamRef.current?.getVideoTracks()[0]
+
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0 || !track) {
       setError('Камера еще не готова. Подождите немного и попробуйте снова.')
       return
     }
@@ -144,27 +160,16 @@ export function CameraCapture({
     setError('')
 
     try {
-      const canvas = document.createElement('canvas')
-      canvas.width = settings.width
-      canvas.height = settings.height
+      const photoBlob =
+        (await captureFromPhoto(track, settings)) ??
+        (await captureFromVideo(video, settings))
 
-      const context = canvas.getContext('2d')
-      if (!context) {
-        throw new Error('Canvas is unavailable')
-      }
-
-      drawFrameToCanvas(video, context, settings.width, settings.height)
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, 'image/jpeg', 0.92)
-      })
-
-      if (!blob) {
+      if (!photoBlob) {
         throw new Error('Failed to create image')
       }
 
       const timestamp = new Date().toISOString().replaceAll(':', '-')
-      const url = URL.createObjectURL(blob)
+      const url = URL.createObjectURL(photoBlob)
 
       onCapture({
         url,
@@ -205,6 +210,13 @@ export function CameraCapture({
             </button>
           )}
         </div>
+
+        {sourceResolution && (
+          <div className="camera-screen__quality-chip">
+            {sourceResolution}
+            <span>{captureMethod === 'imageCapture' ? 'photo' : 'video'}</span>
+          </div>
+        )}
       </div>
 
       <div className="camera-screen__viewport">
@@ -272,13 +284,12 @@ export function CameraCapture({
 }
 
 function drawFrameToCanvas(
-  video: HTMLVideoElement,
+  source: CanvasImageSource,
   context: CanvasRenderingContext2D,
   targetWidth: number,
   targetHeight: number,
 ) {
-  const sourceWidth = video.videoWidth
-  const sourceHeight = video.videoHeight
+  const { width: sourceWidth, height: sourceHeight } = readSourceDimensions(source)
   const sourceRatio = sourceWidth / sourceHeight
   const targetRatio = targetWidth / targetHeight
 
@@ -296,7 +307,7 @@ function drawFrameToCanvas(
   }
 
   context.drawImage(
-    video,
+    source,
     cropX,
     cropY,
     cropWidth,
@@ -306,6 +317,131 @@ function drawFrameToCanvas(
     targetWidth,
     targetHeight,
   )
+}
+
+function readSourceDimensions(source: CanvasImageSource) {
+  if (source instanceof HTMLVideoElement) {
+    return {
+      width: source.videoWidth,
+      height: source.videoHeight,
+    }
+  }
+
+  if (source instanceof HTMLImageElement) {
+    return {
+      width: source.naturalWidth,
+      height: source.naturalHeight,
+    }
+  }
+
+  if (source instanceof ImageBitmap) {
+    return {
+      width: source.width,
+      height: source.height,
+    }
+  }
+
+  return {
+    width: 0,
+    height: 0,
+  }
+}
+
+function buildVideoConstraints(settings: CaptureSettings): MediaTrackConstraints {
+  const preferredWidth = clampDimension(Math.max(settings.width * 2, 1920), 1920, 4096)
+  const preferredHeight = clampDimension(Math.max(settings.height * 2, 1440), 1080, 3072)
+
+  return {
+    facingMode: { ideal: 'environment' },
+    width: { ideal: preferredWidth },
+    height: { ideal: preferredHeight },
+    aspectRatio: { ideal: settings.width / settings.height },
+  }
+}
+
+function clampDimension(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, Math.round(value)))
+}
+
+function formatResolution(width?: number, height?: number) {
+  if (!width || !height) {
+    return ''
+  }
+
+  return `${width} x ${height}`
+}
+
+function getImageCaptureInstance(track: MediaStreamTrack | undefined) {
+  if (!track) {
+    return null
+  }
+
+  const ImageCaptureCtor = (
+    globalThis as typeof globalThis & {
+      ImageCapture?: new (mediaStreamTrack: MediaStreamTrack) => NativeImageCapture
+    }
+  ).ImageCapture
+
+  if (!ImageCaptureCtor) {
+    return null
+  }
+
+  try {
+    return new ImageCaptureCtor(track)
+  } catch {
+    return null
+  }
+}
+
+async function captureFromPhoto(track: MediaStreamTrack, settings: CaptureSettings) {
+  const imageCapture = getImageCaptureInstance(track)
+  if (!imageCapture) {
+    return null
+  }
+
+  try {
+    const photoBlob = await imageCapture.takePhoto()
+    const imageUrl = URL.createObjectURL(photoBlob)
+
+    try {
+      const image = await loadImage(imageUrl)
+      return renderSourceToBlob(image, settings)
+    } finally {
+      URL.revokeObjectURL(imageUrl)
+    }
+  } catch {
+    return null
+  }
+}
+
+async function captureFromVideo(video: HTMLVideoElement, settings: CaptureSettings) {
+  return renderSourceToBlob(video, settings)
+}
+
+async function renderSourceToBlob(source: CanvasImageSource, settings: CaptureSettings) {
+  const canvas = document.createElement('canvas')
+  canvas.width = settings.width
+  canvas.height = settings.height
+
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('Canvas is unavailable')
+  }
+
+  drawFrameToCanvas(source, context, settings.width, settings.height)
+
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, 'image/jpeg', 0.96)
+  })
+}
+
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('Failed to load image'))
+    image.src = url
+  })
 }
 
 function downloadCapture(url: string, timestamp: string) {

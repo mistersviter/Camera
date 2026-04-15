@@ -261,6 +261,32 @@
   gap: 8px;
 }
 
+.camera-screen__quality-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.camera-screen__quality-chip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .camera-screen__viewport {
   position: relative;
   overflow: hidden;
@@ -411,5 +437,9 @@
   .setup-header {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .camera-screen__quality-chip {
+    width: fit-content;
   }
 }
