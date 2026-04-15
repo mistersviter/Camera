@@ -250,31 +250,15 @@
 
 .camera-screen__topbar {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-start;
   gap: 12px;
 }
 
-.camera-screen__topbar-actions {
+.camera-screen__topbar-group {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.camera-screen__meta {
-  display: grid;
-  gap: 4px;
-  text-align: right;
-}
-
-.camera-screen__meta strong {
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.camera-screen__meta span {
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 0.8125rem;
 }
 
 .camera-screen__viewport {
@@ -333,13 +317,62 @@
   gap: 10px;
 }
 
-.camera-screen__actions {
-  margin-top: 12px;
-}
-
 .camera-screen__bottomsheet {
   padding-bottom: max(16px, env(safe-area-inset-bottom));
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72) 28%);
+}
+
+.camera-screen__capture-bar {
+  display: grid;
+  place-items: center;
+  padding-top: 8px;
+}
+
+.camera-toggle {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.camera-toggle--active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #1c1b1f;
+  border-color: rgba(255, 255, 255, 0.92);
+}
+
+.camera-toggle:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
+}
+
+.capture-button {
+  width: 84px;
+  min-width: 84px;
+  height: 84px;
+  min-height: 84px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  box-shadow: none;
+}
+
+.capture-button__inner {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.18s ease;
+}
+
+.capture-button:active .capture-button__inner {
+  transform: scale(0.94);
 }
 
 .camera-screen .helper-text,
@@ -378,14 +411,5 @@
   .setup-header {
     display: grid;
     grid-template-columns: 1fr;
-  }
-
-  .camera-screen__topbar-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .camera-screen__meta {
-    text-align: left;
   }
 }

@@ -12,6 +12,14 @@ type CaptureResult = {
   timestamp: string
 }
 
+type TorchCapabilities = MediaTrackCapabilities & {
+  torch?: boolean
+}
+
+type TorchConstraintSet = MediaTrackConstraintSet & {
+  torch?: boolean
+}
+
 type CameraCaptureProps = {
   settings: CaptureSettings
   onBack: () => void
@@ -33,6 +41,8 @@ export function CameraCapture({
   )
   const [error, setError] = useState('')
   const [isCapturing, setIsCapturing] = useState(false)
+  const [torchSupported, setTorchSupported] = useState(false)
+  const [torchEnabled, setTorchEnabled] = useState(false)
 
   useEffect(() => {
     void startCamera()
@@ -62,6 +72,11 @@ export function CameraCapture({
         await video.play()
       }
 
+      const [track] = stream.getVideoTracks()
+      const capabilities = track?.getCapabilities?.() as TorchCapabilities | undefined
+
+      setTorchSupported(Boolean(capabilities?.torch))
+      setTorchEnabled(false)
       setStatus('ready')
     } catch (cameraError) {
       const name =
@@ -93,6 +108,29 @@ export function CameraCapture({
     }
 
     streamRef.current = null
+    setTorchSupported(false)
+    setTorchEnabled(false)
+  }
+
+  async function handleTorchToggle() {
+    const track = streamRef.current?.getVideoTracks()[0]
+    if (!track || !torchSupported) {
+      return
+    }
+
+    const nextValue = !torchEnabled
+
+    try {
+      await track.applyConstraints({
+        advanced: [{ torch: nextValue } as TorchConstraintSet],
+      })
+      setTorchEnabled(nextValue)
+      setError('')
+    } catch {
+      setTorchSupported(false)
+      setTorchEnabled(false)
+      setError('В этом браузере управление вспышкой недоступно.')
+    }
   }
 
   async function handleCapture() {
@@ -152,19 +190,20 @@ export function CameraCapture({
   return (
     <section className="camera-screen">
       <div className="camera-screen__topbar">
-        <div className="camera-screen__topbar-actions">
-          <button className="ghost-action" type="button" onClick={onBack}>
-            Назад
-          </button>
+        <div className="camera-screen__topbar-group">
           <button className="ghost-action" type="button" onClick={onClose}>
             Закрыть
           </button>
-        </div>
-        <div className="camera-screen__meta">
-          <strong>
-            {settings.width} x {settings.height}
-          </strong>
-          <span>Снимок сохранится ровно в этом размере</span>
+          {torchSupported && status === 'ready' && (
+            <button
+              className={`camera-toggle ${torchEnabled ? 'camera-toggle--active' : ''}`}
+              type="button"
+              onClick={() => void handleTorchToggle()}
+              aria-label={torchEnabled ? 'Выключить вспышку' : 'Включить вспышку'}
+            >
+              {torchEnabled ? 'Вспышка: вкл' : 'Вспышка'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -214,24 +253,17 @@ export function CameraCapture({
       </div>
 
       <div className="camera-screen__bottomsheet">
-        <p className="helper-text">
-          Фото будет обрезано строго по светлой рамке. В финальный файл попадет
-          только область внутри нее.
-        </p>
-
         {error && status === 'ready' && <p className="status-message error">{error}</p>}
 
-        <div className="camera-screen__actions">
-          <button className="ghost-action" type="button" onClick={onBack}>
-            Изменить параметры
-          </button>
+        <div className="camera-screen__capture-bar">
           <button
             className="capture-button"
             type="button"
             onClick={() => void handleCapture()}
             disabled={status !== 'ready' || isCapturing}
+            aria-label={isCapturing ? 'Сохраняем фото' : 'Сделать фото'}
           >
-            {isCapturing ? 'Сохраняем...' : 'Сделать фото'}
+            <span className="capture-button__inner" />
           </button>
         </div>
       </div>
