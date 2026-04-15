@@ -1,12 +1,26 @@
 :root {
-  font-family:
-    "Manrope", "Segoe UI", sans-serif;
+  --primary: #6750a4;
+  --on-primary: #ffffff;
+  --primary-focus: rgba(103, 80, 164, 0.28);
+  --surface: #fffbfe;
+  --surface-container-low: #f7f2fa;
+  --surface-container: #f3edf7;
+  --secondary-container: #e8def8;
+  --on-secondary-container: #1d192b;
+  --on-surface: #1c1b1f;
+  --on-surface-variant: #49454f;
+  --outline: #79747e;
+  --outline-variant: #cac4d0;
+  --error: #b3261e;
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.18);
+  --shadow-2:
+    0 2px 6px rgba(0, 0, 0, 0.16),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+  font-family: Roboto, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #0f172a;
-  background:
-    radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 32%),
-    linear-gradient(180deg, #e0f2fe 0%, #f8fafc 42%, #eff6ff 100%);
+  color: var(--on-surface);
+  background: #f6f0fa;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -24,6 +38,7 @@ html {
 body {
   min-height: 100svh;
   margin: 0;
+  background: #f6f0fa;
 }
 
 button,

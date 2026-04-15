@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
-type CameraCaptureProps = {
-  onClose: () => void
+type CaptureSettings = {
+  width: number
+  height: number
 }
 
 type CaptureResult = {
@@ -11,42 +12,38 @@ type CaptureResult = {
   timestamp: string
 }
 
-type TorchCapabilities = MediaTrackCapabilities & {
-  torch?: boolean
+type CameraCaptureProps = {
+  settings: CaptureSettings
+  onBack: () => void
+  onClose: () => void
+  onCapture: (result: CaptureResult) => void
 }
 
-type TorchConstraintSet = MediaTrackConstraintSet & {
-  torch?: boolean
-}
-
-const DEFAULT_WIDTH = 1600
-const DEFAULT_HEIGHT = 1200
-
-export function CameraCapture({ onClose }: CameraCaptureProps) {
+export function CameraCapture({
+  settings,
+  onBack,
+  onClose,
+  onCapture,
+}: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const lastCaptureUrlRef = useRef<string | null>(null)
 
-  const [isStarting, setIsStarting] = useState(true)
-  const [isCameraReady, setIsCameraReady] = useState(false)
+  const [status, setStatus] = useState<'starting' | 'ready' | 'denied' | 'error'>(
+    'starting',
+  )
   const [error, setError] = useState('')
-  const [torchSupported, setTorchSupported] = useState(false)
-  const [torchEnabled, setTorchEnabled] = useState(false)
-  const [targetWidth, setTargetWidth] = useState(DEFAULT_WIDTH)
-  const [targetHeight, setTargetHeight] = useState(DEFAULT_HEIGHT)
-  const [captureResult, setCaptureResult] = useState<CaptureResult | null>(null)
+  const [isCapturing, setIsCapturing] = useState(false)
 
   useEffect(() => {
     void startCamera()
 
     return () => {
       stopCamera()
-      cleanupLastCaptureUrl()
     }
   }, [])
 
   async function startCamera() {
-    setIsStarting(true)
+    setStatus('starting')
     setError('')
 
     try {
@@ -65,24 +62,23 @@ export function CameraCapture({ onClose }: CameraCaptureProps) {
         await video.play()
       }
 
-      const [track] = stream.getVideoTracks()
-      const capabilities = track?.getCapabilities?.() as TorchCapabilities | undefined
-
-      setTorchSupported(Boolean(capabilities?.torch))
-      setTorchEnabled(false)
-      setIsCameraReady(true)
+      setStatus('ready')
     } catch (cameraError) {
-      const message =
-        cameraError instanceof Error
-          ? cameraError.message
-          : 'Не удалось открыть камеру.'
+      const name =
+        cameraError instanceof DOMException ? cameraError.name : 'UnknownError'
 
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        setStatus('denied')
+        setError(
+          'Доступ к камере запрещен. Разрешите его в настройках браузера и попробуйте снова.',
+        )
+        return
+      }
+
+      setStatus('error')
       setError(
-        `Не удалось получить доступ к камере. Проверьте разрешение браузера. ${message}`,
+        'Не удалось открыть камеру. Попробуйте еще раз чуть позже.',
       )
-      setIsCameraReady(false)
-    } finally {
-      setIsStarting(false)
     }
   }
 
@@ -97,246 +93,150 @@ export function CameraCapture({ onClose }: CameraCaptureProps) {
     }
 
     streamRef.current = null
-    setIsCameraReady(false)
-    setTorchSupported(false)
-    setTorchEnabled(false)
-  }
-
-  function cleanupLastCaptureUrl() {
-    if (lastCaptureUrlRef.current) {
-      URL.revokeObjectURL(lastCaptureUrlRef.current)
-      lastCaptureUrlRef.current = null
-    }
-  }
-
-  async function handleTorchToggle() {
-    const track = streamRef.current?.getVideoTracks()[0]
-    if (!track || !torchSupported) {
-      return
-    }
-
-    const nextValue = !torchEnabled
-
-    try {
-      await track.applyConstraints({
-        advanced: [{ torch: nextValue } as TorchConstraintSet],
-      })
-      setTorchEnabled(nextValue)
-      setError('')
-    } catch {
-      setError(
-        'На этом устройстве вспышкой нельзя управлять из браузера. Камера продолжит работать без нее.',
-      )
-      setTorchSupported(false)
-      setTorchEnabled(false)
-    }
   }
 
   async function handleCapture() {
     const video = videoRef.current
     if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-      setError('Камера еще не готова. Попробуйте через секунду.')
+      setError('Камера еще не готова. Подождите немного и попробуйте снова.')
       return
     }
 
-    const safeWidth = normalizeDimension(targetWidth, DEFAULT_WIDTH)
-    const safeHeight = normalizeDimension(targetHeight, DEFAULT_HEIGHT)
-    const canvas = document.createElement('canvas')
-    canvas.width = safeWidth
-    canvas.height = safeHeight
-
-    const context = canvas.getContext('2d')
-    if (!context) {
-      setError('Не удалось подготовить холст для снимка.')
-      return
-    }
-
-    drawFrameToCanvas(video, context, safeWidth, safeHeight)
-
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, 'image/jpeg', 0.92)
-    })
-
-    if (!blob) {
-      setError('Не удалось сохранить снимок.')
-      return
-    }
-
-    cleanupLastCaptureUrl()
-
-    const timestamp = new Date().toISOString().replaceAll(':', '-')
-    const url = URL.createObjectURL(blob)
-    lastCaptureUrlRef.current = url
-
-    setCaptureResult({
-      url,
-      width: safeWidth,
-      height: safeHeight,
-      timestamp,
-    })
-
-    downloadCapture(url, timestamp)
+    setIsCapturing(true)
     setError('')
+
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = settings.width
+      canvas.height = settings.height
+
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Canvas is unavailable')
+      }
+
+      drawFrameToCanvas(video, context, settings.width, settings.height)
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.92)
+      })
+
+      if (!blob) {
+        throw new Error('Failed to create image')
+      }
+
+      const timestamp = new Date().toISOString().replaceAll(':', '-')
+      const url = URL.createObjectURL(blob)
+
+      onCapture({
+        url,
+        width: settings.width,
+        height: settings.height,
+        timestamp,
+      })
+
+      downloadCapture(url, timestamp)
+      stopCamera()
+      onBack()
+    } catch {
+      setError('Не удалось сохранить фото. Попробуйте сделать снимок еще раз.')
+    } finally {
+      setIsCapturing(false)
+    }
   }
 
-  function handleClose() {
-    stopCamera()
-    onClose()
+  const frameStyle = {
+    aspectRatio: `${settings.width} / ${settings.height}`,
   }
 
   return (
-    <section className="camera-card">
-      <div className="camera-header">
-        <div>
-          <p className="eyebrow">Camera</p>
-          <h1>Управление камерой</h1>
+    <section className="camera-screen">
+      <div className="camera-screen__topbar">
+        <div className="camera-screen__topbar-actions">
+          <button className="ghost-action" type="button" onClick={onBack}>
+            Назад
+          </button>
+          <button className="ghost-action" type="button" onClick={onClose}>
+            Закрыть
+          </button>
         </div>
-        <button className="secondary-action" type="button" onClick={handleClose}>
-          Закрыть
-        </button>
+        <div className="camera-screen__meta">
+          <strong>
+            {settings.width} x {settings.height}
+          </strong>
+          <span>Снимок сохранится ровно в этом размере</span>
+        </div>
       </div>
 
-      <div className="camera-preview">
+      <div className="camera-screen__viewport">
         <video
           ref={videoRef}
-          className="camera-video"
+          className="camera-screen__video"
           autoPlay
           muted
           playsInline
         />
-        {!isCameraReady && (
-          <div className="camera-placeholder">
-            {isStarting ? 'Подключаем камеру...' : 'Камера недоступна'}
+
+        {status === 'ready' && (
+          <div className="camera-screen__overlay">
+            <div className="camera-screen__frame" style={frameStyle}>
+              <div className="camera-screen__grid" />
+            </div>
+          </div>
+        )}
+
+        {status !== 'ready' && (
+          <div className="camera-screen__message">
+            <strong>
+              {status === 'starting'
+                ? 'Подключаем камеру...'
+                : status === 'denied'
+                  ? 'Доступ запрещен'
+                  : 'Камера недоступна'}
+            </strong>
+            <p>{error}</p>
+            <div className="camera-screen__fallback-actions">
+              {status !== 'starting' && (
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() => void startCamera()}
+                >
+                  Повторить попытку
+                </button>
+              )}
+              <button className="primary-action" type="button" onClick={onBack}>
+                Вернуться к параметрам
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="control-grid">
-        <label className="field">
-          <span>Ширина фото</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min="320"
-            max="4096"
-            step="1"
-            value={targetWidth}
-            onChange={(event) => setTargetWidth(Number(event.target.value))}
-          />
-        </label>
-
-        <label className="field">
-          <span>Высота фото</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min="320"
-            max="4096"
-            step="1"
-            value={targetHeight}
-            onChange={(event) => setTargetHeight(Number(event.target.value))}
-          />
-        </label>
-      </div>
-
-      <div className="preset-row">
-        <button
-          className="chip"
-          type="button"
-          onClick={() => {
-            setTargetWidth(1600)
-            setTargetHeight(1200)
-          }}
-        >
-          1600 x 1200
-        </button>
-        <button
-          className="chip"
-          type="button"
-          onClick={() => {
-            setTargetWidth(1280)
-            setTargetHeight(960)
-          }}
-        >
-          1280 x 960
-        </button>
-        <button
-          className="chip"
-          type="button"
-          onClick={() => {
-            setTargetWidth(1080)
-            setTargetHeight(1080)
-          }}
-        >
-          1080 x 1080
-        </button>
-      </div>
-
-      <div className="action-row">
-        <button
-          className="secondary-action"
-          type="button"
-          onClick={handleTorchToggle}
-          disabled={!torchSupported || !isCameraReady}
-        >
-          {torchEnabled ? 'Выключить вспышку' : 'Включить вспышку'}
-        </button>
-
-        <button
-          className="primary-action"
-          type="button"
-          onClick={() => void handleCapture()}
-          disabled={!isCameraReady}
-        >
-          Сделать фото и скачать
-        </button>
-      </div>
-
-      <p className="helper-text">
-        Снимок автоматически обрезается по центру под выбранный размер. Вспышка
-        работает только на поддерживаемых мобильных устройствах и браузерах.
-      </p>
-
-      {error && <p className="status-message error">{error}</p>}
-
-      {!torchSupported && isCameraReady && (
-        <p className="status-message">
-          В этом браузере или на этом устройстве управление вспышкой недоступно.
+      <div className="camera-screen__bottomsheet">
+        <p className="helper-text">
+          Фото будет обрезано строго по светлой рамке. В финальный файл попадет
+          только область внутри нее.
         </p>
-      )}
 
-      {captureResult && (
-        <div className="capture-result">
-          <div className="capture-meta">
-            <strong>Последний снимок</strong>
-            <span>
-              {captureResult.width} x {captureResult.height}
-            </span>
-          </div>
-          <img
-            src={captureResult.url}
-            alt="Последний сделанный снимок"
-            className="capture-image"
-          />
-          <a
-            className="download-link"
-            href={captureResult.url}
-            download={`camera-shot-${captureResult.timestamp}.jpg`}
+        {error && status === 'ready' && <p className="status-message error">{error}</p>}
+
+        <div className="camera-screen__actions">
+          <button className="ghost-action" type="button" onClick={onBack}>
+            Изменить параметры
+          </button>
+          <button
+            className="capture-button"
+            type="button"
+            onClick={() => void handleCapture()}
+            disabled={status !== 'ready' || isCapturing}
           >
-            Скачать еще раз
-          </a>
+            {isCapturing ? 'Сохраняем...' : 'Сделать фото'}
+          </button>
         </div>
-      )}
+      </div>
     </section>
   )
-}
-
-function normalizeDimension(value: number, fallback: number) {
-  if (!Number.isFinite(value)) {
-    return fallback
-  }
-
-  return Math.min(4096, Math.max(320, Math.round(value)))
 }
 
 function drawFrameToCanvas(
