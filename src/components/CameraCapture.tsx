@@ -38,6 +38,8 @@ export function CameraCapture({
   onCapture,
 }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+  const frameRef = useRef<HTMLDivElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
   const [status, setStatus] = useState<'starting' | 'ready' | 'denied' | 'error'>(
@@ -150,8 +152,17 @@ export function CameraCapture({
   async function handleCapture() {
     const video = videoRef.current
     const track = streamRef.current?.getVideoTracks()[0]
+    const viewport = viewportRef.current
+    const frame = frameRef.current
 
-    if (!video || video.videoWidth === 0 || video.videoHeight === 0 || !track) {
+    if (
+      !video ||
+      video.videoWidth === 0 ||
+      video.videoHeight === 0 ||
+      !track ||
+      !viewport ||
+      !frame
+    ) {
       setError('Камера еще не готова. Подождите немного и попробуйте снова.')
       return
     }
@@ -160,9 +171,10 @@ export function CameraCapture({
     setError('')
 
     try {
+      const previewCrop = getPreviewCrop(video, viewport, frame)
       const photoBlob =
-        (await captureFromPhoto(track, settings)) ??
-        (await captureFromVideo(video, settings))
+        (await captureFromPhoto(track, settings, previewCrop)) ??
+        (await captureFromVideo(video, settings, previewCrop))
 
       if (!photoBlob) {
         throw new Error('Failed to create image')
@@ -219,7 +231,7 @@ export function CameraCapture({
         )}
       </div>
 
-      <div className="camera-screen__viewport">
+      <div className="camera-screen__viewport" ref={viewportRef}>
         <video
           ref={videoRef}
           className="camera-screen__video"
@@ -230,7 +242,7 @@ export function CameraCapture({
 
         {status === 'ready' && (
           <div className="camera-screen__overlay">
-            <div className="camera-screen__frame" style={frameStyle}>
+            <div className="camera-screen__frame" style={frameStyle} ref={frameRef}>
               <div className="camera-screen__grid" />
             </div>
           </div>
@@ -288,30 +300,19 @@ function drawFrameToCanvas(
   context: CanvasRenderingContext2D,
   targetWidth: number,
   targetHeight: number,
+  previewCrop?: NormalizedCrop,
 ) {
   const { width: sourceWidth, height: sourceHeight } = readSourceDimensions(source)
-  const sourceRatio = sourceWidth / sourceHeight
-  const targetRatio = targetWidth / targetHeight
-
-  let cropWidth = sourceWidth
-  let cropHeight = sourceHeight
-  let cropX = 0
-  let cropY = 0
-
-  if (sourceRatio > targetRatio) {
-    cropWidth = sourceHeight * targetRatio
-    cropX = (sourceWidth - cropWidth) / 2
-  } else {
-    cropHeight = sourceWidth / targetRatio
-    cropY = (sourceHeight - cropHeight) / 2
-  }
+  const crop = previewCrop
+    ? denormalizeCrop(previewCrop, sourceWidth, sourceHeight)
+    : getCenteredCrop(sourceWidth, sourceHeight, targetWidth / targetHeight)
 
   context.drawImage(
     source,
-    cropX,
-    cropY,
-    cropWidth,
-    cropHeight,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
     0,
     0,
     targetWidth,
@@ -393,7 +394,11 @@ function getImageCaptureInstance(track: MediaStreamTrack | undefined) {
   }
 }
 
-async function captureFromPhoto(track: MediaStreamTrack, settings: CaptureSettings) {
+async function captureFromPhoto(
+  track: MediaStreamTrack,
+  settings: CaptureSettings,
+  previewCrop?: NormalizedCrop,
+) {
   const imageCapture = getImageCaptureInstance(track)
   if (!imageCapture) {
     return null
@@ -405,7 +410,7 @@ async function captureFromPhoto(track: MediaStreamTrack, settings: CaptureSettin
 
     try {
       const image = await loadImage(imageUrl)
-      return renderSourceToBlob(image, settings)
+      return renderSourceToBlob(image, settings, previewCrop)
     } finally {
       URL.revokeObjectURL(imageUrl)
     }
@@ -414,11 +419,19 @@ async function captureFromPhoto(track: MediaStreamTrack, settings: CaptureSettin
   }
 }
 
-async function captureFromVideo(video: HTMLVideoElement, settings: CaptureSettings) {
-  return renderSourceToBlob(video, settings)
+async function captureFromVideo(
+  video: HTMLVideoElement,
+  settings: CaptureSettings,
+  previewCrop?: NormalizedCrop,
+) {
+  return renderSourceToBlob(video, settings, previewCrop)
 }
 
-async function renderSourceToBlob(source: CanvasImageSource, settings: CaptureSettings) {
+async function renderSourceToBlob(
+  source: CanvasImageSource,
+  settings: CaptureSettings,
+  previewCrop?: NormalizedCrop,
+) {
   const canvas = document.createElement('canvas')
   canvas.width = settings.width
   canvas.height = settings.height
@@ -428,7 +441,7 @@ async function renderSourceToBlob(source: CanvasImageSource, settings: CaptureSe
     throw new Error('Canvas is unavailable')
   }
 
-  drawFrameToCanvas(source, context, settings.width, settings.height)
+  drawFrameToCanvas(source, context, settings.width, settings.height, previewCrop)
 
   return new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, 'image/jpeg', 0.96)
@@ -442,6 +455,82 @@ function loadImage(url: string) {
     image.onerror = () => reject(new Error('Failed to load image'))
     image.src = url
   })
+}
+
+type NormalizedCrop = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+function getPreviewCrop(
+  video: HTMLVideoElement,
+  viewport: HTMLDivElement,
+  frame: HTMLDivElement,
+): NormalizedCrop {
+  const viewportRect = viewport.getBoundingClientRect()
+  const frameRect = frame.getBoundingClientRect()
+
+  const scale = Math.max(
+    viewportRect.width / video.videoWidth,
+    viewportRect.height / video.videoHeight,
+  )
+
+  const displayedWidth = video.videoWidth * scale
+  const displayedHeight = video.videoHeight * scale
+  const displayedLeft = (viewportRect.width - displayedWidth) / 2
+  const displayedTop = (viewportRect.height - displayedHeight) / 2
+
+  const relativeLeft = frameRect.left - viewportRect.left
+  const relativeTop = frameRect.top - viewportRect.top
+
+  return {
+    x: clamp01((relativeLeft - displayedLeft) / displayedWidth),
+    y: clamp01((relativeTop - displayedTop) / displayedHeight),
+    width: clamp01(frameRect.width / displayedWidth),
+    height: clamp01(frameRect.height / displayedHeight),
+  }
+}
+
+function denormalizeCrop(crop: NormalizedCrop, sourceWidth: number, sourceHeight: number) {
+  const x = crop.x * sourceWidth
+  const y = crop.y * sourceHeight
+  const width = crop.width * sourceWidth
+  const height = crop.height * sourceHeight
+
+  return {
+    x: Math.max(0, x),
+    y: Math.max(0, y),
+    width: Math.min(sourceWidth - x, width),
+    height: Math.min(sourceHeight - y, height),
+  }
+}
+
+function getCenteredCrop(sourceWidth: number, sourceHeight: number, targetRatio: number) {
+  const sourceRatio = sourceWidth / sourceHeight
+
+  if (sourceRatio > targetRatio) {
+    const width = sourceHeight * targetRatio
+    return {
+      x: (sourceWidth - width) / 2,
+      y: 0,
+      width,
+      height: sourceHeight,
+    }
+  }
+
+  const height = sourceWidth / targetRatio
+  return {
+    x: 0,
+    y: (sourceHeight - height) / 2,
+    width: sourceWidth,
+    height,
+  }
+}
+
+function clamp01(value: number) {
+  return Math.min(1, Math.max(0, value))
 }
 
 function downloadCapture(url: string, timestamp: string) {
