@@ -2,6 +2,7 @@ const VAPID_PUBLIC_KEY = import.meta.env.VITE_PUBLIC_VAPID_KEY ?? ''
 
 let serviceWorkerRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null =
   null
+let pendingUpdateRegistration: ServiceWorkerRegistration | null = null
 
 export type PushSupportSnapshot = {
   serviceWorker: boolean
@@ -11,6 +12,10 @@ export type PushSupportSnapshot = {
   permission: NotificationPermission | 'unsupported'
   vapidKeyConfigured: boolean
 }
+
+type ServiceWorkerUpdateListener = () => void
+
+const serviceWorkerUpdateListeners = new Set<ServiceWorkerUpdateListener>()
 
 export function getPushSupportSnapshot(): PushSupportSnapshot {
   const serviceWorker = 'serviceWorker' in navigator
@@ -40,7 +45,15 @@ export function registerServiceWorker() {
     serviceWorkerRegistrationPromise = navigator.serviceWorker.register(
       `${import.meta.env.BASE_URL}sw.js`,
       { scope: import.meta.env.BASE_URL },
-    )
+    ).then((registration) => {
+      bindServiceWorkerUpdateTracking(registration)
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        globalThis.location.reload()
+      })
+
+      return registration
+    })
   }
 
   return serviceWorkerRegistrationPromise
@@ -120,6 +133,53 @@ export async function sendTestPushNotification() {
       url: `${globalThis.location.origin}${import.meta.env.BASE_URL}`,
     },
   })
+}
+
+export function hasPendingServiceWorkerUpdate() {
+  return Boolean(pendingUpdateRegistration?.waiting)
+}
+
+export function subscribeToServiceWorkerUpdates(listener: ServiceWorkerUpdateListener) {
+  serviceWorkerUpdateListeners.add(listener)
+  return () => {
+    serviceWorkerUpdateListeners.delete(listener)
+  }
+}
+
+export async function applyServiceWorkerUpdate() {
+  const registration = pendingUpdateRegistration ?? (await getServiceWorkerRegistration())
+  if (!registration?.waiting) {
+    throw new Error('Новой версии service worker сейчас нет.')
+  }
+
+  registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+}
+
+function bindServiceWorkerUpdateTracking(registration: ServiceWorkerRegistration) {
+  if (registration.waiting) {
+    pendingUpdateRegistration = registration
+    notifyServiceWorkerUpdateListeners()
+  }
+
+  registration.addEventListener('updatefound', () => {
+    const installingWorker = registration.installing
+    if (!installingWorker) {
+      return
+    }
+
+    installingWorker.addEventListener('statechange', () => {
+      if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        pendingUpdateRegistration = registration
+        notifyServiceWorkerUpdateListeners()
+      }
+    })
+  })
+}
+
+function notifyServiceWorkerUpdateListeners() {
+  for (const listener of serviceWorkerUpdateListeners) {
+    listener()
+  }
 }
 
 function urlBase64ToUint8Array(base64String: string) {

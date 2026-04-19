@@ -221,6 +221,28 @@
   border-top: 1px solid var(--outline-variant);
 }
 
+.update-banner {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--secondary-container);
+}
+
+.update-banner__content strong {
+  display: block;
+  color: var(--on-secondary-container);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.update-banner__content p {
+  margin: 6px 0 0;
+  color: var(--on-secondary-container);
+  font-size: 0.92rem;
+}
+
 .push-card {
   margin-top: 20px;
   padding: 16px;

@@ -13,11 +13,18 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('message', (event) => {
   const data = event.data
-  if (!data || data.type !== 'SHOW_TEST_PUSH') {
+  if (!data) {
     return
   }
 
-  event.waitUntil(showPushNotification(data.payload || {}))
+  if (data.type === 'SHOW_TEST_PUSH') {
+    event.waitUntil(showPushNotification(data.payload || {}))
+    return
+  }
+
+  if (data.type === 'SKIP_WAITING') {
+    event.waitUntil(self.skipWaiting())
+  }
 })
 
 self.addEventListener('notificationclick', (event) => {

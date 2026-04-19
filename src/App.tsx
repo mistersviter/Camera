@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PushSubscriptionCard } from './components/PushSubscriptionCard'
+import { PwaUpdateBanner } from './components/PwaUpdateBanner'
 import { CameraCapture } from './components/CameraCapture'
 import './App.css'
 
@@ -93,6 +94,8 @@ export default function App() {
   return (
     <main className="app-shell">
       <section className="setup-card">
+        <PwaUpdateBanner />
+
         <div className="setup-header">
           <div>
             <p className="eyebrow">Camera</p>
