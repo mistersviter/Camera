@@ -8,17 +8,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('push', (event) => {
   const payload = parsePushPayload(event.data)
-  const title = payload.title || 'Camera'
-  const options = {
-    body: payload.body || 'Новое уведомление из приложения Camera.',
-    icon: `${self.registration.scope}favicon.svg`,
-    badge: `${self.registration.scope}favicon.svg`,
-    data: {
-      url: payload.url || self.registration.scope,
-    },
+  event.waitUntil(showPushNotification(payload))
+})
+
+self.addEventListener('message', (event) => {
+  const data = event.data
+  if (!data || data.type !== 'SHOW_TEST_PUSH') {
+    return
   }
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(showPushNotification(data.payload || {}))
 })
 
 self.addEventListener('notificationclick', (event) => {
@@ -53,4 +52,18 @@ function parsePushPayload(data) {
   } catch {
     return { body: data.text() }
   }
+}
+
+function showPushNotification(payload) {
+  const title = payload.title || 'Camera'
+  const options = {
+    body: payload.body || 'Новое уведомление из приложения Camera.',
+    icon: `${self.registration.scope}favicon.svg`,
+    badge: `${self.registration.scope}favicon.svg`,
+    data: {
+      url: payload.url || self.registration.scope,
+    },
+  }
+
+  return self.registration.showNotification(title, options)
 }

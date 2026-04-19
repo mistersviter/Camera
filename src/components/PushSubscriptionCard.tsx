@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   getPushSupportSnapshot,
   getServiceWorkerRegistration,
+  sendTestPushNotification,
   subscribeToPush,
   unsubscribeFromPush,
   type PushSupportSnapshot,
@@ -86,6 +87,29 @@ export function PushSubscriptionCard() {
     }
   }
 
+  async function handleTestPush() {
+    setIsBusy(true)
+    setErrorMessage('')
+    setStatusMessage('')
+
+    try {
+      await sendTestPushNotification()
+      setStatusMessage(
+        'Тестовый payload отправлен в service worker. Если разрешение уже есть, уведомление должно появиться как обычный push.',
+      )
+      setSupport(getPushSupportSnapshot())
+    } catch (error) {
+      setSupport(getPushSupportSnapshot())
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Не удалось показать тестовое push-уведомление.',
+      )
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   return (
     <section className="push-card">
       <div className="push-card__header">
@@ -127,6 +151,15 @@ export function PushSubscriptionCard() {
           disabled={isBusy || !subscription}
         >
           Удалить подписку
+        </button>
+
+        <button
+          className="secondary-action"
+          type="button"
+          onClick={() => void handleTestPush()}
+          disabled={isBusy || !support.serviceWorker || !support.notifications}
+        >
+          Тестовое уведомление
         </button>
       </div>
 

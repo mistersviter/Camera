@@ -94,6 +94,34 @@ export async function unsubscribeFromPush() {
   return existingSubscription.unsubscribe()
 }
 
+export async function sendTestPushNotification() {
+  const support = getPushSupportSnapshot()
+  if (!support.serviceWorker || !support.notifications) {
+    throw new Error('Этот браузер не поддерживает service worker или уведомления.')
+  }
+
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') {
+    throw new Error('Пользователь не разрешил уведомления.')
+  }
+
+  const registration = await getServiceWorkerRegistration()
+  if (!registration?.active) {
+    throw new Error(
+      'Активный service worker пока недоступен. Обновите страницу и попробуйте снова.',
+    )
+  }
+
+  registration.active.postMessage({
+    type: 'SHOW_TEST_PUSH',
+    payload: {
+      title: 'Camera',
+      body: 'Это тестовое уведомление, отправленное через service worker.',
+      url: `${globalThis.location.origin}${import.meta.env.BASE_URL}`,
+    },
+  })
+}
+
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const normalizedBase64 = (base64String + padding)
