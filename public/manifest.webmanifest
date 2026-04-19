@@ -1,0 +1,20 @@
+{
+  "name": "Camera",
+  "short_name": "Camera",
+  "description": "PWA для мобильной съемки, настройки кадра и подготовки push-уведомлений.",
+  "start_url": "/Camera/",
+  "scope": "/Camera/",
+  "display": "standalone",
+  "background_color": "#f6f0fa",
+  "theme_color": "#6750a4",
+  "lang": "ru",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/Camera/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

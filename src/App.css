@@ -221,6 +221,96 @@
   border-top: 1px solid var(--outline-variant);
 }
 
+.push-card {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 24px;
+  background: var(--surface-container-low);
+}
+
+.push-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.push-card__header h2 {
+  margin: 0;
+  color: var(--on-surface);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.push-card__description {
+  margin-bottom: 16px;
+}
+
+.push-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.push-support-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.push-support-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+}
+
+.push-support-item span {
+  color: var(--on-surface-variant);
+  font-size: 0.8125rem;
+}
+
+.push-support-item strong {
+  color: var(--on-surface);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.push-actions {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.push-details {
+  margin-top: 14px;
+}
+
+.push-details summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.push-details pre {
+  margin: 12px 0 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: #1c1b1f;
+  color: #f4eff4;
+  font-size: 0.75rem;
+  overflow: auto;
+}
+
 .setup-action {
   margin-top: 20px;
 }
@@ -419,6 +509,10 @@
     padding: 32px 28px;
   }
 
+  .push-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .camera-screen__actions,
   .camera-screen__fallback-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -427,14 +521,16 @@
 
 @media (max-width: 560px) {
   .control-grid,
-  .preset-row {
+  .preset-row,
+  .push-support-grid {
     grid-template-columns: 1fr;
   }
 
   .framing-header,
   .capture-meta,
   .camera-screen__topbar,
-  .setup-header {
+  .setup-header,
+  .push-card__header {
     display: grid;
     grid-template-columns: 1fr;
   }

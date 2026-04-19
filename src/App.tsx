@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { PushSubscriptionCard } from './components/PushSubscriptionCard'
 import { CameraCapture } from './components/CameraCapture'
 import './App.css'
 
@@ -73,7 +74,7 @@ export default function App() {
       <main className="app-shell">
         <section className="setup-card hero-card">
           <p className="eyebrow">Camera</p>
-          <h1>Быстрый доступ к съёмке</h1>
+          <h1>Быстрый доступ к съемке</h1>
           <p className="description">
             Пользователь начинает с одной кнопки, затем выбирает параметры
             итогового кадра и снимает фото только через камеру.
@@ -104,7 +105,7 @@ export default function App() {
 
         <p className="description">
           По умолчанию приложение настроено на вертикальные кадры. Сначала
-          задаём размер изображения, затем открываем полноэкранную камеру.
+          задаем размер изображения, затем открываем полноэкранную камеру.
         </p>
 
         <div className="control-grid">
@@ -173,6 +174,8 @@ export default function App() {
           Открыть камеру
         </button>
 
+        <PushSubscriptionCard />
+
         {result && (
           <section className="capture-result">
             <div className="capture-meta">
@@ -191,7 +194,7 @@ export default function App() {
               href={result.url}
               download={`camera-shot-${result.timestamp}.jpg`}
             >
-              Скачать ещё раз
+              Скачать еще раз
             </a>
           </section>
         )}
