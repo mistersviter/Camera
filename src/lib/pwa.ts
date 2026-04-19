@@ -1,7 +1,6 @@
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_PUBLIC_VAPID_KEY ?? ''
 
-let serviceWorkerRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null =
-  null
+let serviceWorkerRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null = null
 let pendingUpdateRegistration: ServiceWorkerRegistration | null = null
 
 export type PushSupportSnapshot = {
@@ -11,6 +10,8 @@ export type PushSupportSnapshot = {
   canSubscribe: boolean
   permission: NotificationPermission | 'unsupported'
   vapidKeyConfigured: boolean
+  isIos: boolean
+  isStandalone: boolean
 }
 
 type ServiceWorkerUpdateListener = () => void
@@ -18,6 +19,12 @@ type ServiceWorkerUpdateListener = () => void
 const serviceWorkerUpdateListeners = new Set<ServiceWorkerUpdateListener>()
 
 export function getPushSupportSnapshot(): PushSupportSnapshot {
+  const userAgent = navigator.userAgent
+  const isIos = /iPhone|iPad|iPod/i.test(userAgent)
+  const isStandalone =
+    'standalone' in navigator
+      ? Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
+      : globalThis.matchMedia?.('(display-mode: standalone)').matches ?? false
   const serviceWorker = 'serviceWorker' in navigator
   const pushManager = 'PushManager' in globalThis
   const notifications = 'Notification' in globalThis
@@ -30,6 +37,8 @@ export function getPushSupportSnapshot(): PushSupportSnapshot {
     notifications,
     permission,
     vapidKeyConfigured,
+    isIos,
+    isStandalone,
     canSubscribe:
       serviceWorker && pushManager && notifications && permission !== 'denied',
   }
@@ -42,18 +51,19 @@ export function registerServiceWorker() {
   }
 
   if (!serviceWorkerRegistrationPromise) {
-    serviceWorkerRegistrationPromise = navigator.serviceWorker.register(
-      `${import.meta.env.BASE_URL}sw.js`,
-      { scope: import.meta.env.BASE_URL },
-    ).then((registration) => {
-      bindServiceWorkerUpdateTracking(registration)
-
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        globalThis.location.reload()
+    serviceWorkerRegistrationPromise = navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`, {
+        scope: import.meta.env.BASE_URL,
       })
+      .then((registration) => {
+        bindServiceWorkerUpdateTracking(registration)
 
-      return registration
-    })
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          globalThis.location.reload()
+        })
+
+        return registration
+      })
   }
 
   return serviceWorkerRegistrationPromise
@@ -108,24 +118,14 @@ export async function unsubscribeFromPush() {
 }
 
 export async function sendTestPushNotification() {
-  const support = getPushSupportSnapshot()
-  if (!support.serviceWorker || !support.notifications) {
-    throw new Error('Этот браузер не поддерживает service worker или уведомления.')
+  const registration = await ensureNotificationReady()
+  const activeWorker = registration.active
+
+  if (!activeWorker) {
+    throw new Error('Активный service worker пока недоступен. Обновите страницу и попробуйте снова.')
   }
 
-  const permission = await Notification.requestPermission()
-  if (permission !== 'granted') {
-    throw new Error('Пользователь не разрешил уведомления.')
-  }
-
-  const registration = await getServiceWorkerRegistration()
-  if (!registration?.active) {
-    throw new Error(
-      'Активный service worker пока недоступен. Обновите страницу и попробуйте снова.',
-    )
-  }
-
-  registration.active.postMessage({
+  activeWorker.postMessage({
     type: 'SHOW_TEST_PUSH',
     payload: {
       title: 'Camera',
@@ -133,6 +133,21 @@ export async function sendTestPushNotification() {
       url: `${globalThis.location.origin}${import.meta.env.BASE_URL}`,
     },
   })
+}
+
+export async function scheduleTestPushNotification(delayMs = 10000) {
+  const registration = await ensureNotificationReady()
+
+  globalThis.setTimeout(() => {
+    registration.active?.postMessage({
+      type: 'SHOW_TEST_PUSH',
+      payload: {
+        title: 'Camera',
+        body: 'Тестовое уведомление по таймеру. Проверьте экран блокировки.',
+        url: `${globalThis.location.origin}${import.meta.env.BASE_URL}`,
+      },
+    })
+  }, delayMs)
 }
 
 export function hasPendingServiceWorkerUpdate() {
@@ -153,6 +168,27 @@ export async function applyServiceWorkerUpdate() {
   }
 
   registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+}
+
+async function ensureNotificationReady() {
+  const support = getPushSupportSnapshot()
+  if (!support.serviceWorker || !support.notifications) {
+    throw new Error('Этот браузер не поддерживает service worker или уведомления.')
+  }
+
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') {
+    throw new Error('Пользователь не разрешил уведомления.')
+  }
+
+  const registration = await getServiceWorkerRegistration()
+  if (!registration?.active) {
+    throw new Error(
+      'Активный service worker пока недоступен. Обновите страницу и попробуйте снова.',
+    )
+  }
+
+  return registration
 }
 
 function bindServiceWorkerUpdateTracking(registration: ServiceWorkerRegistration) {

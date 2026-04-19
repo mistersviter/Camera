@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   getPushSupportSnapshot,
   getServiceWorkerRegistration,
+  scheduleTestPushNotification,
   sendTestPushNotification,
   subscribeToPush,
   unsubscribeFromPush,
@@ -78,9 +79,7 @@ export function PushSubscriptionCard() {
       }
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'Не удалось удалить push-подписку.',
+        error instanceof Error ? error.message : 'Не удалось удалить push-подписку.',
       )
     } finally {
       setIsBusy(false)
@@ -110,6 +109,29 @@ export function PushSubscriptionCard() {
     }
   }
 
+  async function handleTimedTestPush() {
+    setIsBusy(true)
+    setErrorMessage('')
+    setStatusMessage('')
+
+    try {
+      await scheduleTestPushNotification(10000)
+      setStatusMessage(
+        'Тестовое уведомление поставлено на таймер 10 секунд. Заблокируйте экран и проверьте, появится ли оно.',
+      )
+      setSupport(getPushSupportSnapshot())
+    } catch (error) {
+      setSupport(getPushSupportSnapshot())
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Не удалось запланировать тестовое push-уведомление.',
+      )
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   return (
     <section className="push-card">
       <div className="push-card__header">
@@ -123,8 +145,8 @@ export function PushSubscriptionCard() {
       </div>
 
       <p className="description push-card__description">
-        Service worker и клиентская подписка уже подключены. После добавления
-        бэкенда это приложение сможет получать Web Push.
+        Service worker и клиентская подписка уже подключены. После добавления бэкенда
+        приложение сможет получать настоящий Web Push.
       </p>
 
       <div className="push-support-grid">
@@ -133,6 +155,13 @@ export function PushSubscriptionCard() {
         <SupportItem label="Notifications" value={support.notifications} />
         <SupportItem label="Permission" value={support.permission} />
       </div>
+
+      {support.isIos && !support.isStandalone && (
+        <p className="status-message">
+          На iPhone push для веб-приложения обычно становится доступен только после
+          добавления сайта на экран домой и запуска в standalone-режиме.
+        </p>
+      )}
 
       <div className="push-actions">
         <button
@@ -161,15 +190,30 @@ export function PushSubscriptionCard() {
         >
           Тестовое уведомление
         </button>
+
+        <button
+          className="secondary-action"
+          type="button"
+          onClick={() => void handleTimedTestPush()}
+          disabled={isBusy || !support.serviceWorker || !support.notifications}
+        >
+          Уведомление через 10 сек
+        </button>
       </div>
 
       {!support.vapidKeyConfigured && (
         <p className="helper-text">
           Для реальной подписки нужен публичный VAPID-ключ в переменной
-          `VITE_PUBLIC_VAPID_KEY`. Сейчас UI и логика готовы, но без ключа
-          подписка не завершится.
+          `VITE_PUBLIC_VAPID_KEY`. Сейчас UI и логика готовы, но без ключа подписка не
+          завершится.
         </p>
       )}
+
+      <p className="helper-text">
+        Таймер на фронте нужен только для проверки. Для действительно надежной
+        доставки на заблокированный экран потом все равно нужен реальный push с
+        бэкенда.
+      </p>
 
       {statusMessage && <p className="status-message">{statusMessage}</p>}
       {errorMessage && <p className="status-message error">{errorMessage}</p>}
