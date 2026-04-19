@@ -177,18 +177,18 @@
 .framing-preview {
   display: grid;
   place-items: center;
-  min-height: 220px;
+  height: 240px;
   padding: 16px;
   border-radius: 20px;
   background: var(--surface-container);
 }
 
 .framing-safe-zone {
-  width: min(100%, 240px);
   border: 2px solid var(--primary);
   border-radius: 20px;
   overflow: hidden;
   background: rgba(103, 80, 164, 0.08);
+  flex: 0 0 auto;
 }
 
 .framing-grid,

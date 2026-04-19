@@ -17,8 +17,8 @@ type CaptureResult = {
 }
 
 const DEFAULT_SETTINGS: CaptureSettings = {
-  width: 1600,
-  height: 1200,
+  width: 1200,
+  height: 1600,
 }
 
 export default function App() {
@@ -87,7 +87,7 @@ export default function App() {
   }
 
   const aspectRatio = settings.width / settings.height
-  const previewStyle = { aspectRatio: `${settings.width} / ${settings.height}` }
+  const previewStyle = getPreviewFrameStyle(settings)
 
   return (
     <main className="app-shell">
@@ -103,8 +103,8 @@ export default function App() {
         </div>
 
         <p className="description">
-          Сначала задаём размер изображения, затем открываем полноэкранную
-          камеру. Галерея не используется: пользователь может только снимать.
+          По умолчанию приложение настроено на вертикальные кадры. Сначала
+          задаём размер изображения, затем открываем полноэкранную камеру.
         </p>
 
         <div className="control-grid">
@@ -136,14 +136,14 @@ export default function App() {
         </div>
 
         <div className="preset-row">
-          <button className="chip" type="button" onClick={() => applyPreset(1600, 1200)}>
-            1600 x 1200
+          <button className="chip" type="button" onClick={() => applyPreset(1200, 1600)}>
+            1200 x 1600
           </button>
-          <button className="chip" type="button" onClick={() => applyPreset(1280, 960)}>
-            1280 x 960
+          <button className="chip" type="button" onClick={() => applyPreset(1080, 1350)}>
+            1080 x 1350
           </button>
-          <button className="chip" type="button" onClick={() => applyPreset(1080, 1080)}>
-            1080 x 1080
+          <button className="chip" type="button" onClick={() => applyPreset(1080, 1920)}>
+            1080 x 1920
           </button>
         </div>
 
@@ -191,7 +191,7 @@ export default function App() {
               href={result.url}
               download={`camera-shot-${result.timestamp}.jpg`}
             >
-              Скачать еще раз
+              Скачать ещё раз
             </a>
           </section>
         )}
@@ -206,4 +206,21 @@ function normalizeDimension(value: number, fallback: number) {
   }
 
   return Math.min(4096, Math.max(320, Math.round(value)))
+}
+
+function getPreviewFrameStyle(settings: CaptureSettings) {
+  const boxSize = 180
+  const ratio = settings.width / settings.height
+
+  if (ratio >= 1) {
+    return {
+      width: `${boxSize}px`,
+      height: `${Math.round(boxSize / ratio)}px`,
+    }
+  }
+
+  return {
+    width: `${Math.round(boxSize * ratio)}px`,
+    height: `${boxSize}px`,
+  }
 }
