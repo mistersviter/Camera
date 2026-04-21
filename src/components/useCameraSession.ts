@@ -20,6 +20,36 @@ export function useCameraSession(settings: CaptureSettings) {
   const [torchEnabled, setTorchEnabled] = useState(false)
   const [sourceResolution, setSourceResolution] = useState('')
 
+  const applyStream = useCallback(async (stream: MediaStream) => {
+    streamRef.current = stream
+
+    const video = videoRef.current
+    if (video) {
+      video.srcObject = stream
+      await video.play()
+    }
+
+    const [track] = stream.getVideoTracks()
+    if (!track) {
+      setStatus('error')
+      setError('Не удалось получить видеопоток камеры.')
+      return
+    }
+
+    const capabilities = track.getCapabilities?.() as TorchCapabilities | undefined
+    const trackSettings = track.getSettings?.()
+
+    setTorchSupported(Boolean(capabilities?.torch))
+    setTorchEnabled(false)
+    setSourceResolution(
+      formatResolution(
+        trackSettings?.width ?? video?.videoWidth,
+        trackSettings?.height ?? video?.videoHeight,
+      ),
+    )
+    setStatus('ready')
+  }, [])
+
   const stopCamera = useCallback(() => {
     const stream = streamRef.current
     if (!stream) {
@@ -37,6 +67,7 @@ export function useCameraSession(settings: CaptureSettings) {
   }, [])
 
   const startCamera = useCallback(async () => {
+    stopCamera()
     setStatus('starting')
     setError('')
 
@@ -45,34 +76,7 @@ export function useCameraSession(settings: CaptureSettings) {
         audio: false,
         video: buildVideoConstraints(settings),
       })
-
-      streamRef.current = stream
-
-      const video = videoRef.current
-      if (video) {
-        video.srcObject = stream
-        await video.play()
-      }
-
-      const [track] = stream.getVideoTracks()
-      if (!track) {
-        setStatus('error')
-        setError('Не удалось получить видеопоток камеры.')
-        return
-      }
-
-      const capabilities = track.getCapabilities?.() as TorchCapabilities | undefined
-      const trackSettings = track.getSettings?.()
-
-      setTorchSupported(Boolean(capabilities?.torch))
-      setTorchEnabled(false)
-      setSourceResolution(
-        formatResolution(
-          trackSettings?.width ?? video?.videoWidth,
-          trackSettings?.height ?? video?.videoHeight,
-        ),
-      )
-      setStatus('ready')
+      await applyStream(stream)
     } catch (cameraError) {
       const name =
         cameraError instanceof DOMException ? cameraError.name : 'UnknownError'
@@ -88,7 +92,7 @@ export function useCameraSession(settings: CaptureSettings) {
       setStatus('error')
       setError('Не удалось открыть камеру. Попробуйте еще раз чуть позже.')
     }
-  }, [settings])
+  }, [applyStream, settings, stopCamera])
 
   const toggleTorch = useCallback(async () => {
     const track = streamRef.current?.getVideoTracks()[0]
@@ -112,15 +116,54 @@ export function useCameraSession(settings: CaptureSettings) {
   }, [torchEnabled, torchSupported])
 
   useEffect(() => {
-    const startHandle = globalThis.setTimeout(() => {
-      void startCamera()
-    }, 0)
+    let isCancelled = false
+
+    async function initializeCamera() {
+      setStatus('starting')
+      setError('')
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: buildVideoConstraints(settings),
+        })
+
+        if (isCancelled) {
+          for (const track of stream.getTracks()) {
+            track.stop()
+          }
+          return
+        }
+
+        await applyStream(stream)
+      } catch (cameraError) {
+        if (isCancelled) {
+          return
+        }
+
+        const name =
+          cameraError instanceof DOMException ? cameraError.name : 'UnknownError'
+
+        if (name === 'NotAllowedError' || name === 'SecurityError') {
+          setStatus('denied')
+          setError(
+            'Доступ к камере запрещен. Разрешите его в настройках браузера и попробуйте снова.',
+          )
+          return
+        }
+
+        setStatus('error')
+        setError('Не удалось открыть камеру. Попробуйте еще раз чуть позже.')
+      }
+    }
+
+    void initializeCamera()
 
     return () => {
-      globalThis.clearTimeout(startHandle)
+      isCancelled = true
       stopCamera()
     }
-  }, [startCamera, stopCamera])
+  }, [applyStream, settings, stopCamera])
 
   return {
     error,
