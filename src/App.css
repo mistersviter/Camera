@@ -81,8 +81,7 @@
 .secondary-action:focus-visible,
 .chip:focus-visible,
 .ghost-action:focus-visible,
-.download-link:focus-visible,
-.capture-button:focus-visible {
+.download-link:focus-visible {
   outline: 3px solid var(--primary-focus);
   outline-offset: 2px;
 }
@@ -98,8 +97,7 @@
 .secondary-action,
 .chip,
 .ghost-action,
-.download-link,
-.capture-button {
+.download-link {
   min-height: 48px;
   border: none;
   border-radius: 999px;
@@ -112,8 +110,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.primary-action,
-.capture-button {
+.primary-action {
   width: 100%;
   padding: 0 24px;
   background: var(--primary);
@@ -145,14 +142,12 @@
 .secondary-action:active,
 .chip:active,
 .ghost-action:active,
-.download-link:active,
-.capture-button:active {
+.download-link:active {
   transform: scale(0.99);
 }
 
 .primary-action:disabled,
-.secondary-action:disabled,
-.capture-button:disabled {
+.secondary-action:disabled {
   background: var(--surface-container);
   color: rgba(28, 27, 31, 0.38);
   box-shadow: none;
@@ -191,8 +186,7 @@
   flex: 0 0 auto;
 }
 
-.framing-grid,
-.camera-screen__grid {
+.framing-grid {
   width: 100%;
   height: 100%;
   background-image:
@@ -344,184 +338,6 @@
   border-radius: 20px;
 }
 
-.camera-screen {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  background: #000;
-  color: #fff;
-}
-
-.camera-screen__topbar,
-.camera-screen__bottomsheet {
-  position: relative;
-  z-index: 2;
-  padding: max(16px, env(safe-area-inset-top)) 16px 16px;
-}
-
-.camera-screen__topbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-}
-
-.camera-screen__topbar-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.camera-screen__quality-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.camera-screen__quality-chip span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.camera-screen__viewport {
-  position: relative;
-  overflow: hidden;
-}
-
-.camera-screen__video {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.camera-screen__overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.camera-screen__frame {
-  width: min(100%, calc((100svh - 220px) * 0.92));
-  max-height: calc(100% - 24px);
-  border: 2px solid rgba(255, 255, 255, 0.92);
-  border-radius: 24px;
-  overflow: hidden;
-  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.44);
-}
-
-.camera-screen__message {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  gap: 12px;
-  padding: 24px;
-  text-align: center;
-  background: rgba(0, 0, 0, 0.72);
-}
-
-.camera-screen__message strong {
-  font-size: 1.25rem;
-  font-weight: 500;
-}
-
-.camera-screen__message p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.camera-screen__fallback-actions,
-.camera-screen__actions {
-  display: grid;
-  gap: 10px;
-}
-
-.camera-screen__bottomsheet {
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72) 28%);
-}
-
-.camera-screen__capture-bar {
-  display: grid;
-  place-items: center;
-  padding-top: 8px;
-}
-
-.camera-toggle {
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.28);
-  color: #ffffff;
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.camera-toggle--active {
-  background: rgba(255, 255, 255, 0.92);
-  color: #1c1b1f;
-  border-color: rgba(255, 255, 255, 0.92);
-}
-
-.camera-toggle:focus-visible {
-  outline: 3px solid rgba(255, 255, 255, 0.3);
-  outline-offset: 2px;
-}
-
-.capture-button {
-  width: 84px;
-  min-width: 84px;
-  height: 84px;
-  min-height: 84px;
-  padding: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  border: 3px solid rgba(255, 255, 255, 0.92);
-  box-shadow: none;
-}
-
-.capture-button__inner {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: #ffffff;
-  transition: transform 0.18s ease;
-}
-
-.capture-button:active .capture-button__inner {
-  transform: scale(0.94);
-}
-
-.camera-screen .helper-text,
-.camera-screen .status-message {
-  color: rgba(255, 255, 255, 0.86);
-}
-
-.camera-screen .status-message.error {
-  color: #ffb4ab;
-}
-
 @media (min-width: 768px) {
   .app-shell {
     padding: 24px;
@@ -532,11 +348,6 @@
   }
 
   .push-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .camera-screen__actions,
-  .camera-screen__fallback-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -550,14 +361,9 @@
 
   .framing-header,
   .capture-meta,
-  .camera-screen__topbar,
   .setup-header,
   .push-card__header {
     display: grid;
     grid-template-columns: 1fr;
-  }
-
-  .camera-screen__quality-chip {
-    width: fit-content;
   }
 }

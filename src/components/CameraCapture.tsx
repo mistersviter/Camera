@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { captureFromPreview, downloadCapture } from './cameraCaptureUtils'
 import type { CameraStatus, CaptureResult, CaptureSettings } from './types'
 import { useCameraSession } from './useCameraSession'
+import './CameraCapture.css'
 
 type CameraCaptureProps = {
   settings: CaptureSettings
