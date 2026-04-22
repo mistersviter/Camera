@@ -175,9 +175,7 @@ function CameraViewport({
 
       {status === 'ready' && (
         <div className="camera-screen__overlay">
-          <div className="camera-screen__frame" style={frameStyle} ref={frameRef}>
-            <div className="camera-screen__grid" />
-          </div>
+          <div className="camera-screen__frame" style={frameStyle} ref={frameRef} />
         </div>
       )}
 

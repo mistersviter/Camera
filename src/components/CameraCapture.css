@@ -1,24 +1,26 @@
 .camera-screen {
   position: fixed;
   inset: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
   background: #000;
   color: #fff;
+  overflow: hidden;
 }
 
 .camera-screen__topbar,
 .camera-screen__bottomsheet {
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
   z-index: 2;
-  padding: max(16px, env(safe-area-inset-top)) 16px 16px;
 }
 
 .camera-screen__topbar {
+  top: 0;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
+  padding: max(16px, env(safe-area-inset-top)) 16px 16px;
 }
 
 .camera-screen__topbar-group {
@@ -54,8 +56,8 @@
 }
 
 .camera-screen__viewport {
-  position: relative;
-  overflow: hidden;
+  position: absolute;
+  inset: 0;
 }
 
 .camera-screen__video {
@@ -70,27 +72,21 @@
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding:
+    calc(max(16px, env(safe-area-inset-top)) + 72px)
+    20px
+    calc(max(24px, env(safe-area-inset-bottom)) + 112px);
+  pointer-events: none;
 }
 
 .camera-screen__frame {
-  width: min(100%, calc((100svh - 220px) * 0.92));
-  max-height: calc(100% - 24px);
+  width: min(100%, calc((100svh - 232px) * 0.94));
+  max-width: calc((100vw - 40px) * 0.98);
+  max-height: 100%;
   border: 2px solid rgba(255, 255, 255, 0.92);
-  border-radius: 24px;
+  border-radius: 28px;
   overflow: hidden;
-  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.44);
-}
-
-.camera-screen__grid {
-  width: 100%;
-  height: 100%;
-  background-image:
-    linear-gradient(90deg, rgba(103, 80, 164, 0.16) 1px, transparent 1px),
-    linear-gradient(rgba(103, 80, 164, 0.16) 1px, transparent 1px);
-  background-size:
-    33.333% 100%,
-    100% 33.333%;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.52);
 }
 
 .camera-screen__message {
@@ -121,8 +117,10 @@
 }
 
 .camera-screen__bottomsheet {
+  bottom: 0;
   padding-bottom: max(16px, env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72) 28%);
+  padding-top: 32px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.56) 22%, rgba(0, 0, 0, 0.82));
 }
 
 .camera-screen__capture-bar {
@@ -155,12 +153,15 @@
 }
 
 .capture-button {
+  display: grid;
+  place-items: center;
   width: 84px;
   min-width: 84px;
   height: 84px;
   min-height: 84px;
   padding: 0;
   border: none;
+  border: 3px solid rgba(255, 255, 255, 0.92);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.18);
   color: var(--on-primary);
@@ -192,7 +193,6 @@
   height: 64px;
   border-radius: 50%;
   background: #ffffff;
-  border: 3px solid rgba(255, 255, 255, 0.92);
   transition: transform 0.18s ease;
 }
 
