@@ -1,4 +1,10 @@
 .camera-screen {
+  --camera-top-clearance: calc(max(16px, env(safe-area-inset-top)) + 88px);
+  --camera-bottom-clearance: calc(max(24px, env(safe-area-inset-bottom)) + 168px);
+  --camera-side-padding: 20px;
+  --camera-available-height: calc(
+    100svh - var(--camera-top-clearance) - var(--camera-bottom-clearance)
+  );
   position: fixed;
   inset: 0;
   background: #000;
@@ -18,18 +24,20 @@
   top: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 12px;
   padding: max(16px, env(safe-area-inset-top)) 16px 16px;
 }
 
 .camera-screen__topbar-group {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
   gap: 8px;
 }
 
 .camera-screen__quality-chip {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -73,16 +81,16 @@
   display: grid;
   place-items: center;
   padding:
-    calc(max(16px, env(safe-area-inset-top)) + 72px)
-    20px
-    calc(max(24px, env(safe-area-inset-bottom)) + 112px);
+    var(--camera-top-clearance)
+    var(--camera-side-padding)
+    var(--camera-bottom-clearance);
   pointer-events: none;
 }
 
 .camera-screen__frame {
-  width: min(100%, calc((100svh - 232px) * 0.94));
-  max-width: calc((100vw - 40px) * 0.98);
-  max-height: 100%;
+  width: min(100%, calc(var(--camera-available-height) * 0.92));
+  max-width: calc(100vw - (var(--camera-side-padding) * 2));
+  max-height: var(--camera-available-height);
   border: 2px solid rgba(255, 255, 255, 0.92);
   border-radius: 28px;
   overflow: hidden;
@@ -217,12 +225,12 @@
 }
 
 @media (max-width: 560px) {
-  .camera-screen__topbar {
-    display: grid;
-    grid-template-columns: 1fr;
+  .camera-screen {
+    --camera-top-clearance: calc(max(16px, env(safe-area-inset-top)) + 104px);
+    --camera-bottom-clearance: calc(max(24px, env(safe-area-inset-bottom)) + 176px);
   }
 
   .camera-screen__quality-chip {
-    width: fit-content;
+    width: auto;
   }
 }
