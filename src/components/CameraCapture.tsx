@@ -84,7 +84,6 @@ export function CameraCapture({
       />
 
       <CameraBottomBar
-        error={status === 'ready' ? error : ''}
         isCapturing={isCapturing}
         isReady={status === 'ready'}
         onCapture={() => void handleCapture()}
@@ -194,31 +193,25 @@ function CameraFallback({
 }
 
 function CameraBottomBar({
-  error,
   isCapturing,
   isReady,
   onCapture,
 }: {
-  error: string
   isCapturing: boolean
   isReady: boolean
   onCapture: () => void
 }) {
   return (
-    <div className="camera-screen__bottomsheet">
-      {error && <p className="status-message error">{error}</p>}
-
-      <div className="camera-screen__capture-bar">
-        <button
-          className="capture-button"
-          type="button"
-          onClick={onCapture}
-          disabled={!isReady || isCapturing}
-          aria-label={isCapturing ? 'Сохраняем фото' : 'Сделать фото'}
-        >
-          <span className="capture-button__inner" />
-        </button>
-      </div>
+    <div className="camera-screen__bottombar">
+      <button
+        className="capture-button"
+        type="button"
+        onClick={onCapture}
+        disabled={!isReady || isCapturing}
+        aria-label={isCapturing ? 'Сохраняем фото' : 'Сделать фото'}
+      >
+        <span className="capture-button__inner" />
+      </button>
     </div>
   )
 }
