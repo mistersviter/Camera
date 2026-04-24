@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  buildVideoConstraints,
-  formatResolution,
-} from './cameraCaptureUtils'
+import { buildVideoConstraints, formatResolution } from './cameraCaptureUtils'
 import type {
   CameraStatus,
-  CaptureSettings,
   TorchCapabilities,
   TorchConstraintSet,
 } from './types'
 
-export function useCameraSession(settings: CaptureSettings) {
+export function useCameraSession() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
@@ -74,7 +70,7 @@ export function useCameraSession(settings: CaptureSettings) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: buildVideoConstraints(settings),
+        video: buildVideoConstraints(),
       })
       await applyStream(stream)
     } catch (cameraError) {
@@ -92,7 +88,7 @@ export function useCameraSession(settings: CaptureSettings) {
       setStatus('error')
       setError('Не удалось открыть камеру. Попробуйте еще раз чуть позже.')
     }
-  }, [applyStream, settings, stopCamera])
+  }, [applyStream, stopCamera])
 
   const toggleTorch = useCallback(async () => {
     const track = streamRef.current?.getVideoTracks()[0]
@@ -125,7 +121,7 @@ export function useCameraSession(settings: CaptureSettings) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: buildVideoConstraints(settings),
+          video: buildVideoConstraints(),
         })
 
         if (isCancelled) {
@@ -163,7 +159,7 @@ export function useCameraSession(settings: CaptureSettings) {
       isCancelled = true
       stopCamera()
     }
-  }, [applyStream, settings, stopCamera])
+  }, [applyStream, stopCamera])
 
   return {
     error,

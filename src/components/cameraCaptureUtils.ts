@@ -1,21 +1,11 @@
+import { CAMERA_REQUEST_RESOLUTION } from '../config/camera'
 import type { CaptureSettings } from './types'
 
-type SourceCrop = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-export function buildVideoConstraints(settings: CaptureSettings): MediaTrackConstraints {
-  const preferredWidth = clampDimension(Math.max(settings.width * 2, 1920), 1920, 4096)
-  const preferredHeight = clampDimension(Math.max(settings.height * 2, 1440), 1080, 3072)
-
+export function buildVideoConstraints(): MediaTrackConstraints {
   return {
     facingMode: { ideal: 'environment' },
-    width: { ideal: preferredWidth },
-    height: { ideal: preferredHeight },
-    aspectRatio: { ideal: settings.width / settings.height },
+    width: { ideal: CAMERA_REQUEST_RESOLUTION.width },
+    height: { ideal: CAMERA_REQUEST_RESOLUTION.height },
   }
 }
 
@@ -29,12 +19,9 @@ export function formatResolution(width?: number, height?: number) {
 
 export async function captureFromPreview(
   video: HTMLVideoElement,
-  viewport: HTMLDivElement,
-  frame: HTMLDivElement,
   settings: CaptureSettings,
 ) {
-  const previewCrop = getPreviewCrop(video, viewport, frame, settings.width / settings.height)
-  return renderSourceToBlob(video, settings, previewCrop)
+  return renderSourceToBlob(video, settings)
 }
 
 export function downloadCapture(url: string, timestamp: string) {
@@ -44,29 +31,27 @@ export function downloadCapture(url: string, timestamp: string) {
   link.click()
 }
 
-function drawFrameToCanvas(
+function drawContainedSourceToCanvas(
   source: CanvasImageSource,
   context: CanvasRenderingContext2D,
   targetWidth: number,
   targetHeight: number,
-  previewCrop?: SourceCrop,
 ) {
   const { width: sourceWidth, height: sourceHeight } = readSourceDimensions(source)
-  const crop = previewCrop
-    ? previewCrop
-    : getCenteredCrop(sourceWidth, sourceHeight, targetWidth / targetHeight)
+  if (!sourceWidth || !sourceHeight) {
+    throw new Error('Source dimensions are unavailable')
+  }
 
-  context.drawImage(
-    source,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    targetWidth,
-    targetHeight,
-  )
+  context.fillStyle = '#000000'
+  context.fillRect(0, 0, targetWidth, targetHeight)
+
+  const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight)
+  const drawWidth = sourceWidth * scale
+  const drawHeight = sourceHeight * scale
+  const offsetX = (targetWidth - drawWidth) / 2
+  const offsetY = (targetHeight - drawHeight) / 2
+
+  context.drawImage(source, offsetX, offsetY, drawWidth, drawHeight)
 }
 
 function readSourceDimensions(source: CanvasImageSource) {
@@ -100,7 +85,6 @@ function readSourceDimensions(source: CanvasImageSource) {
 async function renderSourceToBlob(
   source: CanvasImageSource,
   settings: CaptureSettings,
-  previewCrop?: SourceCrop,
 ) {
   const canvas = document.createElement('canvas')
   canvas.width = settings.width
@@ -111,85 +95,9 @@ async function renderSourceToBlob(
     throw new Error('Canvas is unavailable')
   }
 
-  drawFrameToCanvas(source, context, settings.width, settings.height, previewCrop)
+  drawContainedSourceToCanvas(source, context, settings.width, settings.height)
 
   return new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, 'image/jpeg', 0.96)
   })
-}
-
-function getPreviewCrop(
-  video: HTMLVideoElement,
-  viewport: HTMLDivElement,
-  frame: HTMLDivElement,
-  targetRatio: number,
-): SourceCrop {
-  const viewportRect = viewport.getBoundingClientRect()
-  const frameRect = frame.getBoundingClientRect()
-
-  const scale = Math.max(
-    viewportRect.width / video.videoWidth,
-    viewportRect.height / video.videoHeight,
-  )
-
-  const displayedWidth = video.videoWidth * scale
-  const displayedHeight = video.videoHeight * scale
-  const displayedLeft = (viewportRect.width - displayedWidth) / 2
-  const displayedTop = (viewportRect.height - displayedHeight) / 2
-
-  const relativeLeft = frameRect.left - viewportRect.left
-  const relativeTop = frameRect.top - viewportRect.top
-  const relativeCenterX = relativeLeft + frameRect.width / 2
-  const relativeCenterY = relativeTop + frameRect.height / 2
-
-  const centerX = (relativeCenterX - displayedLeft) / scale
-  const centerY = (relativeCenterY - displayedTop) / scale
-
-  const widthFromFrame = frameRect.width / scale
-  const heightFromFrame = frameRect.height / scale
-  const fittedWidth = Math.min(widthFromFrame, heightFromFrame * targetRatio)
-  const fittedHeight = fittedWidth / targetRatio
-
-  const halfWidth = fittedWidth / 2
-  const halfHeight = fittedHeight / 2
-
-  const x = clamp(centerX - halfWidth, 0, video.videoWidth - fittedWidth)
-  const y = clamp(centerY - halfHeight, 0, video.videoHeight - fittedHeight)
-
-  return {
-    x,
-    y,
-    width: fittedWidth,
-    height: fittedHeight,
-  }
-}
-
-function getCenteredCrop(sourceWidth: number, sourceHeight: number, targetRatio: number) {
-  const sourceRatio = sourceWidth / sourceHeight
-
-  if (sourceRatio > targetRatio) {
-    const width = sourceHeight * targetRatio
-    return {
-      x: (sourceWidth - width) / 2,
-      y: 0,
-      width,
-      height: sourceHeight,
-    }
-  }
-
-  const height = sourceWidth / targetRatio
-  return {
-    x: 0,
-    y: (sourceHeight - height) / 2,
-    width: sourceWidth,
-    height,
-  }
-}
-
-function clampDimension(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, Math.round(value)))
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
 }

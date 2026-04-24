@@ -1,7 +1,9 @@
-export type CaptureSettings = {
+export type Resolution = {
   width: number
   height: number
 }
+
+export type CaptureSettings = Resolution
 
 export type CaptureResult = {
   url: string
