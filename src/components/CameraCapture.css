@@ -103,18 +103,17 @@
 }
 
 .camera-screen__bottomsheet {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: stretch;
-  gap: 10px;
-  padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+  position: relative;
+  min-height: calc(124px + max(20px, env(safe-area-inset-bottom)));
+  padding: 12px 16px max(20px, env(safe-area-inset-bottom));
   background: rgba(0, 0, 0, 0.88);
 }
 
 .camera-screen__capture-bar {
-  width: 100%;
-  display: grid;
-  justify-items: center;
+  position: absolute;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
 }
 
 .capture-button {
