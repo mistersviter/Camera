@@ -35,7 +35,6 @@
   display: grid;
   place-items: center;
   min-height: 0;
-  padding: 16px;
   background: #000;
 }
 
