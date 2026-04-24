@@ -6,6 +6,7 @@ export function buildVideoConstraints(): MediaTrackConstraints {
     facingMode: { ideal: 'environment' },
     width: { ideal: CAMERA_REQUEST_RESOLUTION.width },
     height: { ideal: CAMERA_REQUEST_RESOLUTION.height },
+    aspectRatio: { ideal: 3 / 4 },
   }
 }
 
@@ -15,6 +16,14 @@ export function formatResolution(width?: number, height?: number) {
   }
 
   return `${width} x ${height}`
+}
+
+export function formatAspectRatio(width?: number, height?: number) {
+  if (!width || !height) {
+    return ''
+  }
+
+  return (width / height).toFixed(2)
 }
 
 export async function captureFromPreview(

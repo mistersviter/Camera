@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { buildVideoConstraints, formatResolution } from './cameraCaptureUtils'
+import {
+  buildVideoConstraints,
+  formatAspectRatio,
+  formatResolution,
+} from './cameraCaptureUtils'
 import type {
   CameraStatus,
   TorchCapabilities,
@@ -38,7 +42,7 @@ export function useCameraSession() {
     setTorchSupported(Boolean(capabilities?.torch))
     setTorchEnabled(false)
     setSourceResolution(
-      formatResolution(
+      formatSourceResolution(
         trackSettings?.width ?? video?.videoWidth,
         trackSettings?.height ?? video?.videoHeight,
       ),
@@ -172,4 +176,19 @@ export function useCameraSession() {
     toggleTorch,
     videoRef,
   }
+}
+
+function formatSourceResolution(width?: number, height?: number) {
+  const resolution = formatResolution(width, height)
+  const aspectRatio = formatAspectRatio(width, height)
+
+  if (!resolution) {
+    return ''
+  }
+
+  if (!aspectRatio) {
+    return resolution
+  }
+
+  return `${resolution} • ${aspectRatio}`
 }
