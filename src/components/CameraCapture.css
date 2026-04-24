@@ -16,6 +16,13 @@
   background: rgba(0, 0, 0, 0.88);
 }
 
+.camera-screen__topbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .camera-screen__quality-chip {
   display: inline-flex;
   align-items: center;
@@ -28,6 +35,29 @@
   font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
+}
+
+.camera-toggle {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.camera-toggle--active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #1c1b1f;
+  border-color: rgba(255, 255, 255, 0.92);
+}
+
+.camera-toggle:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
 }
 
 .camera-screen__viewport {

@@ -18,8 +18,17 @@ export function CameraCapture({
   onCapture,
 }: CameraCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false)
-  const { error, sourceResolution, startCamera, status, stopCamera, videoRef } =
-    useCameraSession()
+  const {
+    error,
+    sourceResolution,
+    startCamera,
+    status,
+    stopCamera,
+    torchEnabled,
+    torchSupported,
+    toggleTorch,
+    videoRef,
+  } = useCameraSession()
 
   async function handleCapture() {
     const video = videoRef.current
@@ -57,7 +66,14 @@ export function CameraCapture({
 
   return (
     <section className="camera-screen">
-      <CameraTopbar onClose={onClose} sourceResolution={sourceResolution} />
+      <CameraTopbar
+        onClose={onClose}
+        onToggleTorch={() => void toggleTorch()}
+        sourceResolution={sourceResolution}
+        status={status}
+        torchEnabled={torchEnabled}
+        torchSupported={torchSupported}
+      />
 
       <CameraViewport
         error={error}
@@ -79,16 +95,37 @@ export function CameraCapture({
 
 function CameraTopbar({
   onClose,
+  onToggleTorch,
   sourceResolution,
+  status,
+  torchEnabled,
+  torchSupported,
 }: {
   onClose: () => void
+  onToggleTorch: () => void
   sourceResolution: string
+  status: CameraStatus
+  torchEnabled: boolean
+  torchSupported: boolean
 }) {
   return (
     <div className="camera-screen__topbar">
-      <button className="ghost-action" type="button" onClick={onClose}>
-        Закрыть
-      </button>
+      <div className="camera-screen__topbar-group">
+        <button className="ghost-action" type="button" onClick={onClose}>
+          Закрыть
+        </button>
+
+        {torchSupported && status === 'ready' && (
+          <button
+            className={`camera-toggle ${torchEnabled ? 'camera-toggle--active' : ''}`}
+            type="button"
+            onClick={onToggleTorch}
+            aria-label={torchEnabled ? 'Выключить вспышку' : 'Включить вспышку'}
+          >
+            {torchEnabled ? 'Вспышка: вкл' : 'Вспышка'}
+          </button>
+        )}
+      </div>
 
       <div className="camera-screen__quality-chip">
         {sourceResolution || 'Ожидание камеры'}

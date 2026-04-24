@@ -1,8 +1,8 @@
 import type { CaptureSettings, Resolution } from '../components/types'
 
 export const CAMERA_REQUEST_RESOLUTION: Resolution = {
-  width: 3840,
-  height: 3840,
+  width: 3000,
+  height: 4000,
 }
 
 export const CAMERA_OUTPUT_SETTINGS: CaptureSettings = {
