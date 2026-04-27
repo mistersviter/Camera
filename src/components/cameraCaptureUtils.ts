@@ -6,7 +6,7 @@ export function buildVideoConstraints(): MediaTrackConstraints {
     facingMode: { ideal: 'environment' },
     // width: { ideal: CAMERA_REQUEST_RESOLUTION.width },
     // height: { ideal: CAMERA_REQUEST_RESOLUTION.height },
-    aspectRatio: { ideal: 0.75 },
+    aspectRatio: { ideal: 4 / 3 },
   };
 }
 
