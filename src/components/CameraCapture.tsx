@@ -1,15 +1,15 @@
-import { useState } from 'react'
-import { captureFromPreview, downloadCapture } from './cameraCaptureUtils'
-import type { CameraStatus, CaptureResult, CaptureSettings } from './types'
-import { useCameraSession } from './useCameraSession'
-import './CameraCapture.css'
+import { useState } from 'react';
+import { captureFromPreview, downloadCapture } from './cameraCaptureUtils';
+import type { CameraStatus, CaptureResult, CaptureSettings } from './types';
+import { useCameraSession } from './useCameraSession';
+import './CameraCapture.css';
 
 type CameraCaptureProps = {
-  settings: CaptureSettings
-  onBack: () => void
-  onClose: () => void
-  onCapture: (result: CaptureResult) => void
-}
+  settings: CaptureSettings;
+  onBack: () => void;
+  onClose: () => void;
+  onCapture: (result: CaptureResult) => void;
+};
 
 export function CameraCapture({
   settings,
@@ -17,7 +17,7 @@ export function CameraCapture({
   onClose,
   onCapture,
 }: CameraCaptureProps) {
-  const [isCapturing, setIsCapturing] = useState(false)
+  const [isCapturing, setIsCapturing] = useState(false);
   const {
     error,
     sourceResolution,
@@ -28,39 +28,39 @@ export function CameraCapture({
     torchSupported,
     toggleTorch,
     videoRef,
-  } = useCameraSession()
+  } = useCameraSession();
 
   async function handleCapture() {
-    const video = videoRef.current
+    const video = videoRef.current;
 
     if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
-      return
+      return;
     }
 
-    setIsCapturing(true)
+    setIsCapturing(true);
 
     try {
-      const photoBlob = await captureFromPreview(video, settings)
+      const photoBlob = await captureFromPreview(video, settings);
 
       if (!photoBlob) {
-        throw new Error('Failed to create image')
+        throw new Error('Failed to create image');
       }
 
-      const timestamp = new Date().toISOString().replaceAll(':', '-')
-      const url = URL.createObjectURL(photoBlob)
+      const timestamp = new Date().toISOString().replaceAll(':', '-');
+      const url = URL.createObjectURL(photoBlob);
 
       onCapture({
         url,
         width: settings.width,
         height: settings.height,
         timestamp,
-      })
+      });
 
-      downloadCapture(url, timestamp)
-      stopCamera()
-      onBack()
+      downloadCapture(url, timestamp);
+      stopCamera();
+      onBack();
     } finally {
-      setIsCapturing(false)
+      setIsCapturing(false);
     }
   }
 
@@ -89,7 +89,7 @@ export function CameraCapture({
         onCapture={() => void handleCapture()}
       />
     </section>
-  )
+  );
 }
 
 function CameraTopbar({
@@ -100,18 +100,18 @@ function CameraTopbar({
   torchEnabled,
   torchSupported,
 }: {
-  onClose: () => void
-  onToggleTorch: () => void
-  sourceResolution: string
-  status: CameraStatus
-  torchEnabled: boolean
-  torchSupported: boolean
+  onClose: () => void;
+  onToggleTorch: () => void;
+  sourceResolution: string;
+  status: CameraStatus;
+  torchEnabled: boolean;
+  torchSupported: boolean;
 }) {
   return (
     <div className="camera-screen__topbar">
       <div className="camera-screen__topbar-group">
         <button className="ghost-action" type="button" onClick={onClose}>
-          Закрыть
+          Х
         </button>
 
         {torchSupported && status === 'ready' && (
@@ -130,7 +130,7 @@ function CameraTopbar({
         {sourceResolution || 'Ожидание камеры'}
       </div>
     </div>
-  )
+  );
 }
 
 function CameraViewport({
@@ -140,21 +140,32 @@ function CameraViewport({
   status,
   videoRef,
 }: {
-  error: string
-  onBack: () => void
-  onRetry: () => void
-  status: CameraStatus
-  videoRef: React.RefObject<HTMLVideoElement | null>
+  error: string;
+  onBack: () => void;
+  onRetry: () => void;
+  status: CameraStatus;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
 }) {
   return (
     <div className="camera-screen__viewport">
-      <video ref={videoRef} className="camera-screen__video" autoPlay muted playsInline />
+      <video
+        ref={videoRef}
+        className="camera-screen__video"
+        autoPlay
+        muted
+        playsInline
+      />
 
       {status !== 'ready' && (
-        <CameraFallback status={status} error={error} onBack={onBack} onRetry={onRetry} />
+        <CameraFallback
+          status={status}
+          error={error}
+          onBack={onBack}
+          onRetry={onRetry}
+        />
       )}
     </div>
-  )
+  );
 }
 
 function CameraFallback({
@@ -163,10 +174,10 @@ function CameraFallback({
   onRetry,
   status,
 }: {
-  error: string
-  onBack: () => void
-  onRetry: () => void
-  status: CameraStatus
+  error: string;
+  onBack: () => void;
+  onRetry: () => void;
+  status: CameraStatus;
 }) {
   return (
     <div className="camera-screen__message">
@@ -189,7 +200,7 @@ function CameraFallback({
         </button>
       </div>
     </div>
-  )
+  );
 }
 
 function CameraBottomBar({
@@ -197,9 +208,9 @@ function CameraBottomBar({
   isReady,
   onCapture,
 }: {
-  isCapturing: boolean
-  isReady: boolean
-  onCapture: () => void
+  isCapturing: boolean;
+  isReady: boolean;
+  onCapture: () => void;
 }) {
   return (
     <div className="camera-screen__bottombar">
@@ -213,5 +224,5 @@ function CameraBottomBar({
         <span className="capture-button__inner" />
       </button>
     </div>
-  )
+  );
 }
