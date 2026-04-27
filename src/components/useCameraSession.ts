@@ -19,6 +19,7 @@ export function useCameraSession() {
   const [torchSupported, setTorchSupported] = useState(false)
   const [torchEnabled, setTorchEnabled] = useState(false)
   const [sourceResolution, setSourceResolution] = useState('')
+  const [sourceSize, setSourceSize] = useState({ width: 0, height: 0 })
 
   const applyStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream
@@ -38,15 +39,13 @@ export function useCameraSession() {
 
     const capabilities = track.getCapabilities?.() as TorchCapabilities | undefined
     const trackSettings = track.getSettings?.()
+    const width = trackSettings?.width ?? video?.videoWidth ?? 0
+    const height = trackSettings?.height ?? video?.videoHeight ?? 0
 
     setTorchSupported(Boolean(capabilities?.torch))
     setTorchEnabled(false)
-    setSourceResolution(
-      formatSourceResolution(
-        trackSettings?.width ?? video?.videoWidth,
-        trackSettings?.height ?? video?.videoHeight,
-      ),
-    )
+    setSourceSize({ width, height })
+    setSourceResolution(formatSourceResolution(width, height))
     setStatus('ready')
   }, [])
 
@@ -64,6 +63,7 @@ export function useCameraSession() {
     setTorchSupported(false)
     setTorchEnabled(false)
     setSourceResolution('')
+    setSourceSize({ width: 0, height: 0 })
   }, [])
 
   const startCamera = useCallback(async () => {
@@ -168,6 +168,7 @@ export function useCameraSession() {
   return {
     error,
     sourceResolution,
+    sourceSize,
     startCamera,
     status,
     stopCamera,

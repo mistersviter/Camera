@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { captureFromPreview, downloadCapture } from './cameraCaptureUtils';
 import type { CameraStatus, CaptureResult, CaptureSettings } from './types';
 import { useCameraSession } from './useCameraSession';
@@ -18,11 +18,10 @@ export function CameraCapture({
   onCapture,
 }: CameraCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
-  const [renderMetrics, setRenderMetrics] = useState<RenderMetrics | null>(null);
-  const viewportRef = useRef<HTMLDivElement | null>(null);
   const {
     error,
     sourceResolution,
+    sourceSize,
     startCamera,
     status,
     stopCamera,
@@ -31,43 +30,6 @@ export function CameraCapture({
     toggleTorch,
     videoRef,
   } = useCameraSession();
-
-  useEffect(() => {
-    const video = videoRef.current;
-    const viewport = viewportRef.current;
-
-    if (!video || !viewport) {
-      return;
-    }
-
-    const updateMetrics = () => {
-      const videoRect = video.getBoundingClientRect();
-      const viewportRect = viewport.getBoundingClientRect();
-
-      setRenderMetrics({
-        streamWidth: video.videoWidth,
-        streamHeight: video.videoHeight,
-        renderedWidth: Math.round(videoRect.width),
-        renderedHeight: Math.round(videoRect.height),
-        viewportWidth: Math.round(viewportRect.width),
-        viewportHeight: Math.round(viewportRect.height),
-      });
-    };
-
-    const resizeObserver = new ResizeObserver(updateMetrics);
-    resizeObserver.observe(video);
-    resizeObserver.observe(viewport);
-
-    video.addEventListener('loadedmetadata', updateMetrics);
-    globalThis.addEventListener('resize', updateMetrics);
-    updateMetrics();
-
-    return () => {
-      resizeObserver.disconnect();
-      video.removeEventListener('loadedmetadata', updateMetrics);
-      globalThis.removeEventListener('resize', updateMetrics);
-    };
-  }, [status, videoRef]);
 
   async function handleCapture() {
     const video = videoRef.current;
@@ -118,16 +80,15 @@ export function CameraCapture({
         error={error}
         onBack={onBack}
         onRetry={() => void startCamera()}
+        sourceSize={sourceSize}
         status={status}
         videoRef={videoRef}
-        viewportRef={viewportRef}
       />
 
       <CameraBottomBar
         isCapturing={isCapturing}
         isReady={status === 'ready'}
         onCapture={() => void handleCapture()}
-        renderMetrics={status === 'ready' ? renderMetrics : null}
       />
     </section>
   );
@@ -152,7 +113,7 @@ function CameraTopbar({
     <div className="camera-screen__topbar">
       <div className="camera-screen__topbar-group">
         <button className="ghost-action" type="button" onClick={onClose}>
-          Х
+          X
         </button>
 
         {torchSupported && status === 'ready' && (
@@ -178,22 +139,30 @@ function CameraViewport({
   error,
   onBack,
   onRetry,
+  sourceSize,
   status,
   videoRef,
-  viewportRef,
 }: {
   error: string;
   onBack: () => void;
   onRetry: () => void;
+  sourceSize: { width: number; height: number };
   status: CameraStatus;
   videoRef: React.RefObject<HTMLVideoElement | null>;
-  viewportRef: React.RefObject<HTMLDivElement | null>;
 }) {
+  const videoStyle =
+    sourceSize.width && sourceSize.height
+      ? {
+          aspectRatio: `${sourceSize.width} / ${sourceSize.height}`,
+        }
+      : undefined;
+
   return (
-    <div className="camera-screen__viewport" ref={viewportRef}>
+    <div className="camera-screen__viewport">
       <video
         ref={videoRef}
         className="camera-screen__video"
+        style={videoStyle}
         autoPlay
         muted
         playsInline
@@ -250,16 +219,13 @@ function CameraBottomBar({
   isCapturing,
   isReady,
   onCapture,
-  renderMetrics,
 }: {
   isCapturing: boolean;
   isReady: boolean;
   onCapture: () => void;
-  renderMetrics: RenderMetrics | null;
 }) {
   return (
     <div className="camera-screen__bottombar">
-      {renderMetrics && <CameraDebugInfo metrics={renderMetrics} />}
       <button
         className="capture-button"
         type="button"
@@ -271,39 +237,4 @@ function CameraBottomBar({
       </button>
     </div>
   );
-}
-
-type RenderMetrics = {
-  streamWidth: number;
-  streamHeight: number;
-  renderedWidth: number;
-  renderedHeight: number;
-  viewportWidth: number;
-  viewportHeight: number;
-};
-
-function CameraDebugInfo({ metrics }: { metrics: RenderMetrics }) {
-  return (
-    <div className="camera-screen__debug">
-      <span>
-        stream {metrics.streamWidth} x {metrics.streamHeight} (
-        {formatRatio(metrics.streamWidth, metrics.streamHeight)})
-      </span>
-      <span>
-        video {metrics.renderedWidth} x {metrics.renderedHeight} (
-        {formatRatio(metrics.renderedWidth, metrics.renderedHeight)})
-      </span>
-      <span>
-        viewport {metrics.viewportWidth} x {metrics.viewportHeight}
-      </span>
-    </div>
-  );
-}
-
-function formatRatio(width: number, height: number) {
-  if (!width || !height) {
-    return '0.00';
-  }
-
-  return (width / height).toFixed(2);
 }
