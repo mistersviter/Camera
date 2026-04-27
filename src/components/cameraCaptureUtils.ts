@@ -1,11 +1,11 @@
-// import { CAMERA_REQUEST_RESOLUTION } from '../config/camera';
+import { CAMERA_REQUEST_RESOLUTION } from '../config/camera';
 import type { CaptureSettings } from './types';
 
 export function buildVideoConstraints(): MediaTrackConstraints {
   return {
     facingMode: { ideal: 'environment' },
-    // width: { ideal: CAMERA_REQUEST_RESOLUTION.width },
-    // height: { ideal: CAMERA_REQUEST_RESOLUTION.height },
+    width: { ideal: CAMERA_REQUEST_RESOLUTION.width },
+    height: { ideal: CAMERA_REQUEST_RESOLUTION.height },
     aspectRatio: { ideal: 4 / 3 },
   };
 }
