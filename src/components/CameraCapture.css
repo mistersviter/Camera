@@ -114,8 +114,8 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-height: calc(124px + max(20px, env(safe-area-inset-bottom)));
-  padding: 12px 16px max(20px, env(safe-area-inset-bottom));
+  min-height: calc(96px + max(12px, env(safe-area-inset-bottom)));
+  padding: 8px 16px max(12px, env(safe-area-inset-bottom));
   background: rgba(0, 0, 0, 0.88);
 }
 
