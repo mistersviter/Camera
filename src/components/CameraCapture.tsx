@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { captureFromPreview, downloadCapture } from './cameraCaptureUtils';
 import type { CameraStatus, CaptureResult, CaptureSettings } from './types';
 import { useCameraSession } from './useCameraSession';
+import { CAMERA_REQUEST_RESOLUTION } from '../config/camera';
 import './CameraCapture.css';
 
 type CameraCaptureProps = {
@@ -18,6 +19,8 @@ export function CameraCapture({
   onCapture,
 }: CameraCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const {
     error,
     sourceResolution,
@@ -30,6 +33,52 @@ export function CameraCapture({
     toggleTorch,
     videoRef,
   } = useCameraSession();
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const viewport = viewportRef.current;
+
+    if (!video || !viewport) {
+      return;
+    }
+
+    const updateDebugInfo = () => {
+      const videoRect = video.getBoundingClientRect();
+      const viewportRect = viewport.getBoundingClientRect();
+      const vv = globalThis.visualViewport;
+
+      setDebugInfo({
+        requestedWidth: CAMERA_REQUEST_RESOLUTION.width,
+        requestedHeight: CAMERA_REQUEST_RESOLUTION.height,
+        streamWidth: video.videoWidth,
+        streamHeight: video.videoHeight,
+        sourceWidth: sourceSize.width,
+        sourceHeight: sourceSize.height,
+        renderedWidth: Math.round(videoRect.width),
+        renderedHeight: Math.round(videoRect.height),
+        viewportWidth: Math.round(viewportRect.width),
+        viewportHeight: Math.round(viewportRect.height),
+        visualWidth: vv ? Math.round(vv.width) : 0,
+        visualHeight: vv ? Math.round(vv.height) : 0,
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(updateDebugInfo);
+    resizeObserver.observe(video);
+    resizeObserver.observe(viewport);
+
+    video.addEventListener('loadedmetadata', updateDebugInfo);
+    globalThis.addEventListener('resize', updateDebugInfo);
+    globalThis.visualViewport?.addEventListener('resize', updateDebugInfo);
+    updateDebugInfo();
+
+    return () => {
+      resizeObserver.disconnect();
+      video.removeEventListener('loadedmetadata', updateDebugInfo);
+      globalThis.removeEventListener('resize', updateDebugInfo);
+      globalThis.visualViewport?.removeEventListener('resize', updateDebugInfo);
+    };
+  }, [sourceSize.height, sourceSize.width, status, videoRef]);
 
   async function handleCapture() {
     const video = videoRef.current;
@@ -77,12 +126,18 @@ export function CameraCapture({
       />
 
       <CameraViewport
+        cameraError={error}
+        cameraStatus={status}
+        debugInfo={status === 'ready' ? debugInfo : null}
         error={error}
         onBack={onBack}
         onRetry={() => void startCamera()}
         sourceSize={sourceSize}
         status={status}
+        torchEnabled={torchEnabled}
+        torchSupported={torchSupported}
         videoRef={videoRef}
+        viewportRef={viewportRef}
       />
 
       <CameraBottomBar
@@ -136,19 +191,31 @@ function CameraTopbar({
 }
 
 function CameraViewport({
+  cameraError,
+  cameraStatus,
+  debugInfo,
   error,
   onBack,
   onRetry,
   sourceSize,
   status,
+  torchEnabled,
+  torchSupported,
   videoRef,
+  viewportRef,
 }: {
+  cameraError: string;
+  cameraStatus: CameraStatus;
+  debugInfo: DebugInfo | null;
   error: string;
   onBack: () => void;
   onRetry: () => void;
   sourceSize: { width: number; height: number };
   status: CameraStatus;
+  torchEnabled: boolean;
+  torchSupported: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  viewportRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const videoStyle =
     sourceSize.width && sourceSize.height
@@ -158,7 +225,7 @@ function CameraViewport({
       : undefined;
 
   return (
-    <div className="camera-screen__viewport">
+    <div className="camera-screen__viewport" ref={viewportRef}>
       <video
         ref={videoRef}
         className="camera-screen__video"
@@ -167,6 +234,16 @@ function CameraViewport({
         muted
         playsInline
       />
+
+      {debugInfo && (
+        <CameraDebugOverlay
+          cameraError={cameraError}
+          cameraStatus={cameraStatus}
+          debugInfo={debugInfo}
+          torchEnabled={torchEnabled}
+          torchSupported={torchSupported}
+        />
+      )}
 
       {status !== 'ready' && (
         <CameraFallback
@@ -178,6 +255,76 @@ function CameraViewport({
       )}
     </div>
   );
+}
+
+type DebugInfo = {
+  requestedWidth: number;
+  requestedHeight: number;
+  streamWidth: number;
+  streamHeight: number;
+  sourceWidth: number;
+  sourceHeight: number;
+  renderedWidth: number;
+  renderedHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  visualWidth: number;
+  visualHeight: number;
+};
+
+function CameraDebugOverlay({
+  cameraError,
+  cameraStatus,
+  debugInfo,
+  torchEnabled,
+  torchSupported,
+}: {
+  cameraError: string;
+  cameraStatus: CameraStatus;
+  debugInfo: DebugInfo;
+  torchEnabled: boolean;
+  torchSupported: boolean;
+}) {
+  return (
+    <div className="camera-screen__debug">
+      <span>
+        status {cameraStatus} | torch supported {String(torchSupported)} | torch enabled{' '}
+        {String(torchEnabled)}
+      </span>
+      <span>camera error {cameraError || 'none'}</span>
+      <span>
+        request {debugInfo.requestedWidth} x {debugInfo.requestedHeight} (
+        {formatRatio(debugInfo.requestedWidth, debugInfo.requestedHeight)})
+      </span>
+      <span>
+        source {debugInfo.sourceWidth} x {debugInfo.sourceHeight} (
+        {formatRatio(debugInfo.sourceWidth, debugInfo.sourceHeight)})
+      </span>
+      <span>
+        stream {debugInfo.streamWidth} x {debugInfo.streamHeight} (
+        {formatRatio(debugInfo.streamWidth, debugInfo.streamHeight)})
+      </span>
+      <span>
+        video {debugInfo.renderedWidth} x {debugInfo.renderedHeight} (
+        {formatRatio(debugInfo.renderedWidth, debugInfo.renderedHeight)})
+      </span>
+      <span>
+        viewport {debugInfo.viewportWidth} x {debugInfo.viewportHeight} (
+        {formatRatio(debugInfo.viewportWidth, debugInfo.viewportHeight)})
+      </span>
+      <span>
+        visualViewport {debugInfo.visualWidth} x {debugInfo.visualHeight}
+      </span>
+    </div>
+  );
+}
+
+function formatRatio(width: number, height: number) {
+  if (!width || !height) {
+    return '0.00';
+  }
+
+  return (width / height).toFixed(2);
 }
 
 function CameraFallback({
