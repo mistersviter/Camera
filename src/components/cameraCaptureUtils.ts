@@ -1,12 +1,17 @@
 import { CAMERA_REQUEST_RESOLUTION } from '../config/camera';
 import type { CaptureSettings } from './types';
 
+export type CaptureBlobResult = {
+  blob: Blob;
+  width: number;
+  height: number;
+};
+
 export function buildVideoConstraints(): MediaTrackConstraints {
   return {
     facingMode: { ideal: 'environment' },
     width: { ideal: CAMERA_REQUEST_RESOLUTION.width },
     height: { ideal: CAMERA_REQUEST_RESOLUTION.height },
-    // aspectRatio: { ideal: 4 / 3 },
   };
 }
 
@@ -29,7 +34,7 @@ export function formatAspectRatio(width?: number, height?: number) {
 export async function captureFromPreview(
   video: HTMLVideoElement,
   settings: CaptureSettings,
-) {
+): Promise<CaptureBlobResult> {
   return renderSourceToBlob(video, settings);
 }
 
@@ -40,31 +45,13 @@ export function downloadCapture(url: string, timestamp: string) {
   link.click();
 }
 
-function drawContainedSourceToCanvas(
+function drawSourceToCanvas(
   source: CanvasImageSource,
   context: CanvasRenderingContext2D,
   targetWidth: number,
   targetHeight: number,
 ) {
-  const { width: sourceWidth, height: sourceHeight } =
-    readSourceDimensions(source);
-  if (!sourceWidth || !sourceHeight) {
-    throw new Error('Source dimensions are unavailable');
-  }
-
-  context.fillStyle = '#000000';
-  context.fillRect(0, 0, targetWidth, targetHeight);
-
-  const scale = Math.min(
-    targetWidth / sourceWidth,
-    targetHeight / sourceHeight,
-  );
-  const drawWidth = sourceWidth * scale;
-  const drawHeight = sourceHeight * scale;
-  const offsetX = (targetWidth - drawWidth) / 2;
-  const offsetY = (targetHeight - drawHeight) / 2;
-
-  context.drawImage(source, offsetX, offsetY, drawWidth, drawHeight);
+  context.drawImage(source, 0, 0, targetWidth, targetHeight);
 }
 
 function readSourceDimensions(source: CanvasImageSource) {
@@ -95,22 +82,52 @@ function readSourceDimensions(source: CanvasImageSource) {
   };
 }
 
+function getOutputDimensions(
+  sourceWidth: number,
+  sourceHeight: number,
+  settings: CaptureSettings,
+) {
+  if (!sourceWidth || !sourceHeight) {
+    throw new Error('Source dimensions are unavailable');
+  }
+
+  const scale = Math.min(settings.width / sourceWidth, settings.height / sourceHeight);
+
+  return {
+    width: Math.max(1, Math.round(sourceWidth * scale)),
+    height: Math.max(1, Math.round(sourceHeight * scale)),
+  };
+}
+
 async function renderSourceToBlob(
   source: CanvasImageSource,
   settings: CaptureSettings,
-) {
+): Promise<CaptureBlobResult> {
+  const { width: sourceWidth, height: sourceHeight } = readSourceDimensions(source);
+  const output = getOutputDimensions(sourceWidth, sourceHeight, settings);
+
   const canvas = document.createElement('canvas');
-  canvas.width = settings.width;
-  canvas.height = settings.height;
+  canvas.width = output.width;
+  canvas.height = output.height;
 
   const context = canvas.getContext('2d');
   if (!context) {
     throw new Error('Canvas is unavailable');
   }
 
-  drawContainedSourceToCanvas(source, context, settings.width, settings.height);
+  drawSourceToCanvas(source, context, output.width, output.height);
 
-  return new Promise<Blob | null>((resolve) => {
+  const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, 'image/jpeg', 0.96);
   });
+
+  if (!blob) {
+    throw new Error('Failed to create image blob');
+  }
+
+  return {
+    blob,
+    width: output.width,
+    height: output.height,
+  };
 }

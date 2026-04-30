@@ -80,8 +80,9 @@ export default function App() {
             {CAMERA_REQUEST_RESOLUTION.height}.
           </p>
           <p className="helper-text">
-            Итоговый файл после обработки: {CAMERA_OUTPUT_SETTINGS.width} x{' '}
-            {CAMERA_OUTPUT_SETTINGS.height}.
+            Итоговый файл после обработки вписывается в {CAMERA_OUTPUT_SETTINGS.width} x{' '}
+            {CAMERA_OUTPUT_SETTINGS.height} без черных полей, с сохранением исходного
+            соотношения сторон.
           </p>
         </section>
 

@@ -90,19 +90,15 @@ export function CameraCapture({
     setIsCapturing(true);
 
     try {
-      const photoBlob = await captureFromPreview(video, settings);
-
-      if (!photoBlob) {
-        throw new Error('Failed to create image');
-      }
+      const photoResult = await captureFromPreview(video, settings);
 
       const timestamp = new Date().toISOString().replaceAll(':', '-');
-      const url = URL.createObjectURL(photoBlob);
+      const url = URL.createObjectURL(photoResult.blob);
 
       onCapture({
         url,
-        width: settings.width,
-        height: settings.height,
+        width: photoResult.width,
+        height: photoResult.height,
         timestamp,
       });
 
