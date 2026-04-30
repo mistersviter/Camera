@@ -94,6 +94,7 @@
   background: rgba(0, 0, 0, 0.72);
 }
 
+/* DEBUG: Temporary overlay for camera/request/viewport diagnostics. */
 .camera-screen__debug {
   position: absolute;
   left: 12px;

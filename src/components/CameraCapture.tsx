@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { captureFromPreview, downloadCapture } from './cameraCaptureUtils';
 import type { CameraStatus, CaptureResult, CaptureSettings } from './types';
 import { useCameraSession } from './useCameraSession';
+// DEBUG: Imported only for the temporary on-screen diagnostics overlay.
 import { CAMERA_REQUEST_RESOLUTION } from '../config/camera';
 import './CameraCapture.css';
 
@@ -19,7 +20,9 @@ export function CameraCapture({
   onCapture,
 }: CameraCaptureProps) {
   const [isCapturing, setIsCapturing] = useState(false);
+  // DEBUG: Temporary overlay state for inspecting stream/render/viewport geometry.
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+  // DEBUG: Temporary viewport ref used only to measure rendered camera layout.
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const {
     error,
@@ -35,6 +38,8 @@ export function CameraCapture({
   } = useCameraSession();
 
   useEffect(() => {
+    // DEBUG: Collect live layout metrics to compare request/source/stream/video/viewport
+    // across different devices and browsers.
     const video = videoRef.current;
     const viewport = viewportRef.current;
 
@@ -124,6 +129,7 @@ export function CameraCapture({
       <CameraViewport
         cameraError={error}
         cameraStatus={status}
+        // DEBUG: Overlay payload for on-device diagnostics.
         debugInfo={status === 'ready' ? debugInfo : null}
         error={error}
         onBack={onBack}
@@ -189,6 +195,7 @@ function CameraTopbar({
 function CameraViewport({
   cameraError,
   cameraStatus,
+  // DEBUG: Temporary diagnostics object rendered as an overlay on top of the preview.
   debugInfo,
   error,
   onBack,
@@ -253,6 +260,7 @@ function CameraViewport({
   );
 }
 
+// DEBUG: Temporary shape for the on-screen camera diagnostics overlay.
 type DebugInfo = {
   requestedWidth: number;
   requestedHeight: number;
@@ -268,6 +276,7 @@ type DebugInfo = {
   visualHeight: number;
 };
 
+// DEBUG: Temporary overlay used to inspect how different devices render the same stream.
 function CameraDebugOverlay({
   cameraError,
   cameraStatus,
@@ -315,6 +324,7 @@ function CameraDebugOverlay({
   );
 }
 
+// DEBUG: Helper used only by the temporary diagnostics overlay.
 function formatRatio(width: number, height: number) {
   if (!width || !height) {
     return '0.00';
